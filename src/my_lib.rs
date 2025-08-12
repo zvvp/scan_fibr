@@ -1,0 +1,154 @@
+use ndarray::Array1;
+use std::fmt::Debug;
+use std::fs;
+use std::fs::File;
+use std::io::{BufRead, BufReader};
+// use std::path::Path;
+use crate::leads::Leads;
+// use encoding::all::ASCII;
+// use encoding::{Encoding, DecoderTrap};
+
+
+pub struct Ecg {
+    pub r_pos: Vec<u32>,
+    pub intervals: Vec<i32>,
+    pub fintervals: Vec<i32>,
+    pub clean_intervals: Vec<i32>,
+    pub chars: Vec<char>,
+}
+
+impl Ecg {
+    pub fn new() -> Ecg {
+        Ecg {
+            r_pos: vec![],
+            intervals: vec![],
+            fintervals: vec![],
+            clean_intervals: vec![],
+            chars: vec![],
+        }
+    }
+
+    pub fn parse_B_txt(&mut self) {
+        let path_b = "C:\\EcgVar\\B.txt";
+        let file = File::open(&path_b).unwrap();
+        let reader = BufReader::new(&file);
+        let mut line = String::new();
+        // for res_line in reader.lines() {
+        for (i, res_line) in reader.lines().enumerate() {
+            line = match res_line {
+                Ok(val) => val,
+                Err(_err) => continue,
+            };
+            if line.contains(';') {
+                let split_line: Vec<&str> = line.split(';').collect();
+                if split_line.len() == 3 {
+                    let end_line: Vec<&str> = split_line[2].split(':').collect();
+                    if end_line.len() == 2 {
+                        self.r_pos.push(split_line[0].parse::<u32>().unwrap());
+                        self.intervals.push(split_line[1].parse::<i32>().unwrap());
+                        let char_in_line = end_line[0].chars().nth(0);
+                        let char_end = match char_in_line {
+                            Some(val) => val,
+                            None => "A".chars().next().unwrap(),
+                        };
+                        if char_end == 'A' {
+                            println!("{} {:?}", i, end_line);
+                        }
+                        self.chars.push(char_end as char);
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn get_fintervals(&mut self) {
+        let mut max_diff = 0;
+        let mut mean_diff = 0;
+        let mut mean_intervals = 0;
+        let mut step: usize = 1;
+        let diff_intervals = get_diff_intervals(&self.intervals, 1);
+        for i in 0..self.chars.len() {
+        // for (i, item) in self.intervals.iter().enumerate() {
+            if step == 2 {
+                step = 1;
+                continue;
+            }
+            if (i > 3) && (i < self.intervals.len() - 3) {
+                let diff0 = diff_intervals[i];
+                let diff1 = diff_intervals[i + 1];
+                mean_diff = (diff0 + diff1) / 2;
+                if diff0 >= diff1 {
+                    max_diff = diff0;
+                } else {
+                    max_diff = diff1;
+                }
+                mean_intervals = (&self.intervals[i - 3] + &self.intervals[i - 2] + &self.intervals[i - 1] + &self.intervals[i + 2] + &self.intervals[i + 3]) / 5;
+                if (self.chars[i] == 'V') && (self.chars[i + 1] == 'V') && (max_diff > 100) {
+                    self.fintervals.push(mean_intervals + ((&self.intervals[i] - mean_intervals) as f64 * 0.2) as i32);
+                    step = 1;
+                } else if (self.chars[i] == 'V') && (self.chars[i + 1] != 'V') && (max_diff > 40) {
+                    self.fintervals.push(mean_intervals + ((&self.intervals[i] - mean_intervals) as f64 * 0.2) as i32);
+                    self.fintervals.push(mean_intervals + ((&self.intervals[i + 1] - mean_intervals) as f64 * 0.2) as i32);
+                    step = 2;
+                } else {
+                    self.fintervals.push(self.intervals[i]);
+                    step = 1;
+                }
+            } else {
+                self.fintervals.push(self.intervals[i]);
+                step = 1;
+            }
+        }
+    }
+}
+
+pub fn get_diff_intervals(intervals: &Vec<i32>, step_diff: usize) -> Vec<i32> {
+    let mut out: Vec<i32> = vec![];
+    let len = intervals.len();
+
+    if step_diff >= len {
+        return out;
+    }
+
+    for i in step_diff..len {
+        let temp = (intervals[i] - intervals[i - step_diff]).abs();
+        out.push(temp);
+    }
+    out[0] = out[1];
+    let val = out[0];
+    for i in 0..step_diff {
+        out.insert(0, val);
+    }
+    out
+}
+
+fn get_coef_cor(x: &Array1<f32>, y: &Array1<f32>) -> f32 {
+    // Проверка, что длины массивов совпадают
+    if x.len() != y.len() {
+        panic!("Arrays must have the same length");
+    }
+
+    let n = x.len() as f32;
+    let mean_x = x.iter().sum::<f32>() / n;
+    let mean_y = y.iter().sum::<f32>() / n;
+
+    // Сумма произведений отклонений
+    let cov_xy = x
+        .iter()
+        .zip(y.iter())
+        .map(|(&xi, &yi)| (xi - mean_x) * (yi - mean_y))
+        .sum::<f32>();
+
+    // Дисперсии
+    let std_x = (x.iter().map(|&xi| (xi - mean_x).powi(2)).sum::<f32>() / (n - 1.0)).sqrt();
+
+    let std_y = (y.iter().map(|&yi| (yi - mean_y).powi(2)).sum::<f32>() / (n - 1.0)).sqrt();
+
+    // Избегаем деления на ноль
+    if std_x * std_y < std::f32::EPSILON {
+        return 0.0;
+    }
+
+    cov_xy / (std_x * std_y)
+}
+
