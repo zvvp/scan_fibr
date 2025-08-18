@@ -1,16 +1,14 @@
 use std::fmt::Debug;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
-use std::iter::Sum;
-use std::ops::Div;
-use ndarray::Array1;
+use ndarray::{Array1, ArrayView1};
 
 
 pub struct Ecg {
-    pub r_pos: Vec<i32>,
-    pub intervals: Vec<i32>,
-    pub fintervals: Vec<i32>,
-    pub clean_intervals: Vec<i32>,
+    pub r_pos: Vec<f32>,
+    pub intervals: Vec<f32>,
+    pub fintervals: Vec<f32>,
+    pub clean_intervals: Vec<f32>,
     pub chars: Vec<char>,
 }
 
@@ -41,8 +39,8 @@ impl Ecg {
                 if split_line.len() == 3 {
                     let end_line: Vec<&str> = split_line[2].split(':').collect();
                     if end_line.len() == 2 {
-                        self.r_pos.push(split_line[0].parse::<i32>().unwrap());
-                        self.intervals.push(split_line[1].parse::<i32>().unwrap());
+                        self.r_pos.push(split_line[0].parse::<f32>().unwrap());
+                        self.intervals.push(split_line[1].parse::<f32>().unwrap());
                         let char_in_line = end_line[0].chars().nth(0);
                         let char_end = char_in_line.unwrap_or_else(|| "A".chars().next().unwrap());
                         if char_end == 'A' {
@@ -56,8 +54,8 @@ impl Ecg {
     }
 
     pub fn get_fintervals(&mut self) {
-        let mut max_diff = 0;
-        let mut mean_intervals = 0;
+        let mut max_diff:f32 = 0.0;
+        let mut mean_intervals:f32 = 0.0;
         let trs = 0.99;
         let mut step: usize = 1;
 
@@ -80,26 +78,26 @@ impl Ecg {
                     + &self.intervals[i - 1]
                     + &self.intervals[i + 2]
                     + &self.intervals[i + 3])
-                    / 5;
-                if (self.chars[i] == 'V') && (self.chars[i + 1] == 'V') && (max_diff > 10000) {   // max_diff > 100
+                    / 5.0;
+                if (self.chars[i] == 'V') && (self.chars[i + 1] == 'V') && (max_diff > 100.0) {   // max_diff > 100
                     self.fintervals.push(
                         mean_intervals
-                            + ((&self.intervals[i] - mean_intervals) as f64 * 0.2) as i32,
+                            + ((&self.intervals[i] - mean_intervals) * 0.2),
                     );
                     step = 1;
-                } else if (self.chars[i] == 'V') && (self.chars[i + 1] != 'V') && (max_diff > 4000) {  // max_diff > 40
+                } else if (self.chars[i] == 'V') && (self.chars[i + 1] != 'V') && (max_diff > 40.0) {  // max_diff > 40
                     self.fintervals.push(
                         mean_intervals
-                            + ((&self.intervals[i] - mean_intervals) as f64 * 0.2) as i32,
+                            + ((&self.intervals[i] - mean_intervals) * 0.2),
                     );
                     self.fintervals.push(
                         mean_intervals
-                            + ((&self.intervals[i + 1] - mean_intervals) as f64 * 0.2) as i32,
+                            + ((&self.intervals[i + 1] - mean_intervals) * 0.2),
                     );
                     step = 2;
                 } else if self.chars[i] == 'V' {    //  else if self.chars[i] == 'N'
-                    let tf: &Vec<i32> = &self.intervals[i - 1..i + 3].to_vec();
-                    let tf: Vec<f32> = tf.iter().map(|x| *x as f32).collect();
+                    let tf: &Vec<f32> = &self.intervals[i - 1..i + 3].to_vec();
+                    // let tf: Vec<f32> = tf.iter().map(|x| *x as f32).collect();
                     let ref_t: Vec<f32> = vec![tf[0], tf[0] * 0.6, tf[0] * 1.3, tf[0],];
                     let ref_t0: Vec<f32> = vec![tf[0], tf[0] * 0.6, tf[0], tf[0] * 0.6,];
                     let ref_t1: Vec<f32> = vec![tf[0], tf[0] * 1.35, tf[0], tf[0] * 1.35,];
@@ -113,17 +111,17 @@ impl Ecg {
                     if (max_cor > trs) || (diff21 > 160.0) {
                         self.fintervals.push(
                             mean_intervals
-                                + ((&self.intervals[i] - mean_intervals) as f64 * 0.2) as i32,
+                                + ((&self.intervals[i] - mean_intervals) * 0.2),
                         );
                         self.fintervals.push(
                             mean_intervals
-                                + ((&self.intervals[i + 1] - mean_intervals) as f64 * 0.2) as i32,
+                                + ((&self.intervals[i + 1] - mean_intervals) * 0.2),
                         );
                         step = 2;
                     } else {
                         self.fintervals.push(
                             mean_intervals
-                                + ((&self.intervals[i] - mean_intervals) as f64 * 0.2) as i32,
+                                + ((&self.intervals[i] - mean_intervals) * 0.2),
                         );
                         step = 1;
                     }
@@ -138,26 +136,6 @@ impl Ecg {
             }
         }
     }
-}
-
-pub fn get_diff_intervals(intervals: &Vec<i32>, step_diff: usize) -> Vec<i32> {
-    let mut out: Vec<i32> = vec![];
-    let len = intervals.len();
-
-    if step_diff >= len {
-        return out;
-    }
-
-    for i in step_diff..len {
-        let temp = (intervals[i] - intervals[i - step_diff]).abs();
-        out.push(temp);
-    }
-    out[0] = out[1];
-    let val = out[0];
-    for i in 0..step_diff {
-        out.insert(0, val);
-    }
-    out
 }
 
 pub fn get_coef_cor(x: &Vec<f32>, y: &Vec<f32>) -> f32 {
@@ -175,32 +153,11 @@ pub fn get_coef_cor(x: &Vec<f32>, y: &Vec<f32>) -> f32 {
     } else { 0.0 }
 }
 
-// pub fn step_moving_average_i32(data: &Vec<i32>, window_size: usize) -> Vec<i32> {
-//     let mut out: Vec<i32> = vec![];
-//     let hf_w_size = window_size / 2;
-//     for i in (0..data.len() - hf_w_size).step_by(hf_w_size) {
-//         let buff = &data[i..i + hf_w_size];
-//         let mean_buff = buff.iter().sum::<i32>() / buff.len() as i32;
-//         for i in 0..hf_w_size {
-//             out.push(mean_buff);
-//         }
-//     }
-//     let len_data = data.len();
-//     let len_out = out.len();
-//     let diff_len = len_data - len_out;
-//     let last_out = *out.last().unwrap();
-//     for i in 0..diff_len {
-//         out.push(last_out);
-//     }
-//     out
-// }
-
-pub fn step_moving_average_i32(data: &Vec<i32>, window_size: usize) -> Vec<i32> {
-    let mut out: Vec<i32> = vec![];
-    // let hf_w_size = window_size / 2;
+pub fn step_moving_average(data: &Vec<f32>, window_size: usize) -> Vec<f32> {
+    let mut out: Vec<f32> = vec![];
     for i in (0..data.len() - window_size).step_by(window_size) {
         let buff = &data[i..i + window_size];
-        let mean_buff = buff.iter().sum::<i32>() / buff.len() as i32;
+        let mean_buff = buff.iter().sum::<f32>() / buff.len() as f32;
         for i in 0..window_size {
             out.push(mean_buff);
         }
@@ -211,6 +168,63 @@ pub fn step_moving_average_i32(data: &Vec<i32>, window_size: usize) -> Vec<i32> 
     let last_out = *out.last().unwrap();
     for i in 0..diff_len {
         out.push(last_out);
+    }
+    out
+}
+
+pub fn moving_average(data: &Vec<f32>, window_size: usize) -> Vec<f32> {
+    let half_win = window_size / 2;
+    let begin = &data[0..window_size];
+    let mean_begin = begin.iter().sum::<f32>() / begin.len() as f32;
+    let mut out: Vec<f32> = vec![mean_begin; half_win];
+    for i in half_win..data.len() - half_win {
+        let buff = &data[i - half_win..i + half_win];
+        let mean_buff = buff.iter().sum::<f32>() / buff.len() as f32;
+        out.push(mean_buff);
+    }
+    let last_out = *out.last().unwrap();
+    for i in 0..half_win {
+        out.push(last_out);
+    }
+    out
+}
+
+pub fn truncate_win2(ch: &Vec<f32>, k: f32, win_size: usize) -> Vec<f32> {
+    // let in_ch = ch.clone();
+    let mut out = ch.clone();
+    let half_win = win_size / 2;
+
+    for i in ((half_win)..(&out.len() - half_win)).step_by(half_win / 2) {
+        let slice_start = i - half_win;
+        let slice_end = i + half_win;
+        let mut buff = &out[slice_start..slice_end].to_vec();
+
+        let mean_buff: f32 = buff.iter().sum::<f32>() / (buff.len() as f32);
+        let over_buff: Vec<f32> = buff.iter().filter(|x| **x > mean_buff).cloned().collect();
+        if over_buff.len() > 0 {
+            let over_mean: f32 = over_buff.iter().sum::<f32>() / (over_buff.len() as f32);
+            for j in slice_start..slice_end {
+                if out[j] > over_mean {
+                    out[j] = (out[j] - over_mean) * k + over_mean;
+                }
+            }
+        }
+        let under_buff: Vec<f32> = buff.iter().filter(|x| **x < mean_buff).cloned().collect();
+        if under_buff.len() > 0 {
+            let under_mean: f32 = under_buff.iter().sum::<f32>() / (under_buff.len() as f32);
+            for j in slice_start..slice_end {
+                if out[j] < under_mean {
+                    out[j] = (out[j] - under_mean) * k + under_mean;
+                }
+            }
+        }
+    }
+    // Заполнение краевых участков
+    for i in 0..half_win {
+        out[i] = out[half_win];
+    }
+    for i in (out.len() - half_win)..out.len() {
+        out[i] = out[out.len() - half_win];
     }
     out
 }
