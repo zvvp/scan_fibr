@@ -1,4 +1,3 @@
-use std::path::PathBuf;
 use std::io::Read;
 use npy::NpyData;
 
