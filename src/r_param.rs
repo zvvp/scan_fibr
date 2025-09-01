@@ -154,8 +154,8 @@ impl Rparam {
         массив индексов Vec<usize>, где абсолютная разница
         между последовательными интервалами меньше или равна 3.
         */
-        for i in 0..&self.intervals.len() - 1 {
-            let diff = (&self.intervals[i] - &self.intervals[i + 1]).abs();
+        for i in 0..self.intervals.len() - 1 {
+            let diff = (self.intervals[i] - self.intervals[i + 1]).abs();
             if diff <= 3.0 {
                 self.inds_min_diff.push(i);
             }

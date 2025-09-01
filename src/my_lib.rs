@@ -1,12 +1,6 @@
 use ndarray::Array1;
 
 
-// pub struct Fibr {
-//     leads: Leads,
-//     ecg: Rparam,
-//
-// }
-
 pub fn get_coef_cor(x: &Vec<f32>, y: &Vec<f32>) -> f32 {
     let arr_x:Array1<f32> = Array1::from_vec(x.clone());
     let arr_y: Array1<f32> = Array1::from_vec(y.clone());
@@ -96,4 +90,73 @@ pub fn truncate_win2(ch: &Vec<f32>, k: f32, win_size: usize) -> Vec<f32> {
         out[i] = out[out.len() - half_win];
     }
     out
+}
+
+pub fn my_filtfilt(b: &Vec<f32>, a: &Vec<f32>, ch: &Vec<f32>) -> Vec<f32> {
+    let mut temp = ch.to_owned();
+    let mut out = ch.to_owned();
+    let len_b = b.len();
+    let len_a = a.len();
+    let len_ch = ch.len();
+
+    for i in len_b - 1..len_ch {
+        temp[i] = b[0] * ch[i];
+        for j in 1..len_b {
+            temp[i] += b[j] * ch[i - j];
+        }
+        for j in 1..len_a {
+            temp[i] -= a[j] * temp[i - j];
+        }
+    }
+
+    for i in (1..=(len_ch - len_b)).rev() {
+        out[i] = b[0] * temp[i];
+        for j in 1..len_b {
+            out[i] += b[j] * temp[i + j];
+        }
+        for j in 1..len_a {
+            out[i] -= a[j] * out[i + j];
+        }
+    }
+    out
+}
+
+pub fn find_local_max(data: &Vec<f32>) -> (Vec<usize>, Vec<f32>) {
+    let mut ind_max: Vec<usize> = vec![];
+    let mut vec_max: Vec<f32> = vec![];
+    for i in 1..data.len() - 1 {
+        if data[i] > data[i - 1] && data[i] > data[i + 1] {
+            ind_max.push(i);
+            vec_max.push(data[i]);
+        }
+    }
+    (ind_max, vec_max)
+}
+
+pub fn find_max(ind_max: &Vec<usize>, vec_max: &Vec<f32>) -> (f32, usize) {
+    /* Находит в фрагменте индекс максимального локального максимума
+    и значение макс. лок. */
+    let mut max: f32 = 0.0;
+    let mut ind: usize = 0;
+    for (i,item) in vec_max.iter().enumerate() {
+        if *item > max {
+            max = *item;
+            ind = i;
+        }
+    }
+    (max, ind_max[ind])
+}
+
+pub fn find_min(data: &Vec<f32>) -> f32 {
+    /* Находит минимальное значение фрагмента */
+    let mut min: f32 = 0.0;
+    // let mut indmin: usize = 0;
+    for (i,item) in data.iter().enumerate() {
+        if *item < min {
+            min = *item;
+            // indmin = i;
+        }
+    }
+    // (min, indmin)
+    min
 }
