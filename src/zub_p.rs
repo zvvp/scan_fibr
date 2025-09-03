@@ -1,90 +1,54 @@
-use crate::leads::Leads;
-use crate::my_lib::{find_local_max, find_max, find_min, my_filtfilt};
-use crate::r_param::Rparam;
+use std::cmp::min;
+use crate::my_lib::{find_local_max, find_max, find_min, my_filtfilt, Lead, LocMinMax};
+use crate::time_param::TimeParam;
 
 pub struct Zubp {
-    pub mean_amp_p1: f32,
-    pub mean_amp_p2: f32,
-    pub mean_amp_p3: f32,
-    pub mean_PR1: f32,
-    pub mean_PR2: f32,
-    pub mean_PR3: f32,
-    pub coef_p: Vec<f32>,
+    pub mean_amp_p: f32,
+    pub mean_PR: f32,
 }
 
 impl Zubp {
     pub fn new() -> Zubp {
         Zubp {
-            mean_amp_p1: 0.0,
-            mean_amp_p2: 0.0,
-            mean_amp_p3: 0.0,
-            mean_PR1: 0.0,
-            mean_PR2: 0.0,
-            mean_PR3: 0.0,
-            coef_p: vec![],
+            mean_amp_p: 0.0,
+            mean_PR: 0.0,
         }
     }
-    pub fn get_amp_pos(&mut self, leads: &Leads, r_param: &Rparam) {
+    fn get_mean_amp_pos(&mut self, lead: &Lead, time_param: &TimeParam) {
+        /*
+            Вычисляет ср. амп. P зубца и ср. расстояние PR для отведения lead
+         */
         let bl: Vec<f32> = vec![0.00259189, 0.00777566, 0.00777566, 0.00259189];
         let al: Vec<f32> = vec![1.0, -2.3989593, 1.96548122, -0.54578683];
-        let mut sum_amp_p1: f32 = 0.0;
-        let mut sum_amp_p2: f32 = 0.0;
-        let mut sum_amp_p3: f32 = 0.0;
-        let mut sum_PR1: f32 = 0.0;
-        let mut sum_PR2: f32 = 0.0;
-        let mut sum_PR3: f32 = 0.0;
-        let mut len_sum1: f32 = 1.0;
-        let mut len_sum2: f32 = 1.0;
-        let mut len_sum3: f32 = 1.0;
-        for ind in &r_param.inds_min_diff {
-            if (r_param.chars[*ind] == 'N') { // && (r_param.chars[*ind - 1] == 'N') {
-                let len_pr = r_param.intervals[*ind] * 0.36 + 5.0;
-                // if *ind < 50 {
-                //     println!("ind = {ind}, len_pr = {len_pr}");
-                // }
-                let start = (r_param.r_pos[*ind] - len_pr) as usize;
-                let stop = (r_param.r_pos[*ind] - 7.0) as usize;
-                let fragment1 = leads.lead1[start..stop].to_vec();
-                let fragment2 = leads.lead2[start..stop].to_vec();
-                let fragment3 = leads.lead3[start..stop].to_vec();
-                let fragment1 = my_filtfilt(&bl, &al, &fragment1);
-                let fragment2 = my_filtfilt(&bl, &al, &fragment2);
-                let fragment3 = my_filtfilt(&bl, &al, &fragment3);
-                let (amp_p1, ind_p1) = self.get_amp_ind_p(&fragment1);
-                // if *ind < 50 {
-                //     println!("amp_p1 = {amp_p1}, ind_p1 = {ind_p1}");
-                // }
-                if (amp_p1 < 1.0) && (amp_p1 > 0.01) {
-                    let pr1 = len_pr - ind_p1 as f32;
-                    sum_PR1 = sum_PR1 + pr1;
-                    sum_amp_p1 = sum_amp_p1 + amp_p1;
-                    len_sum1 = len_sum1 + 1.0;
-                }
-                let (amp_p2, ind_p2) = self.get_amp_ind_p(&fragment2);
-                if (amp_p2 < 1.0) && (amp_p2 > 0.01) {
-                    let pr2 = len_pr - ind_p2 as f32;
-                    sum_PR2 = sum_PR2 + pr2;
-                    sum_amp_p2 = sum_amp_p2 + amp_p2;
-                    len_sum2 = len_sum2 + 1.0;
-                }
-                let (amp_p3, ind_p3) = self.get_amp_ind_p(&fragment3);
-                if (amp_p3 < 1.0) && (amp_p3 > 0.01) {
-                    let pr3 = len_pr - ind_p3 as f32;
-                    sum_PR3 = sum_PR3 + pr3;
-                    sum_amp_p3 = sum_amp_p3 + amp_p3;
-                    len_sum3 = len_sum3 + 1.0;
+        let mut sum_amp_p: f32 = 0.0;
+        let mut sum_PR: f32 = 0.0;
+        let mut len_sum: f32 = 1.0;
+        for ind in &time_param.inds_min_diff {
+            if time_param.chars[*ind] == 'N' {
+                let len_pr = time_param.intervals[*ind] * 0.36 + 5.0;
+                let start = (time_param.r_pos[*ind] - len_pr) as usize;
+                let stop = (time_param.r_pos[*ind] - 7.0) as usize;
+                let fragment = lead.lead[start..stop].to_vec();
+                let fragment = my_filtfilt(&bl, &al, &fragment);
+
+                let (amp_p, ind_p) = self.get_amp_ind_p(&fragment);
+                if (amp_p < 1.0) && (amp_p > 0.01) {
+                    let pr = len_pr - ind_p as f32;
+                    sum_PR = sum_PR + pr;
+                    sum_amp_p = sum_amp_p + amp_p;
+                    len_sum = len_sum + 1.0;
                 }
             }
         }
-        self.mean_PR1 = sum_PR1 / len_sum1;
-        self.mean_PR2 = sum_PR2 / len_sum2;
-        self.mean_PR3 = sum_PR3 / len_sum3;
-        self.mean_amp_p1 = sum_amp_p1 / len_sum1;
-        self.mean_amp_p2 = sum_amp_p2 / len_sum2;
-        self.mean_amp_p3 = sum_amp_p3 / len_sum3;
+        self.mean_PR = sum_PR / len_sum;
+        self.mean_amp_p = sum_amp_p / len_sum;
     }
 
     fn get_amp_ind_p(&mut self, fragment: &Vec<f32>) -> (f32, usize) {
+        /*
+            Возвращает амп. P и его индекс в фрагменте(PR)
+            для вычисления mean_amp_p и mean_PR
+         */
         let mut amp_p: f32 = 0.0;
         let mut ind_p: usize = 0;
         let (ind_max, vec_max) = find_local_max(fragment);
@@ -107,41 +71,90 @@ impl Zubp {
         (amp_p, ind_p)
     }
 
-    pub fn get_P(&mut self, leads: &Leads, rparam: &Rparam) {
+    fn find_p(&self, fragment: &Vec<f32>) -> f32 {
+        /*
+            Возвращает 1.0, если P зубец найден 0.0, если нет
+         */
+        let mut pzub: f32 = 0.0;
+        let mut amp_pzub: f32 = 0.0;
+        let mut amp_pzub1: f32 = 0.0;
+        let mut amp_pzub2: f32 = 0.0;
+        let locminmax = LocMinMax::new(fragment);
+        /*println!("arr_loc {:?}", &locminmax.arr_loc);
+        println!("diff_loc {:?}", &locminmax.diff_loc);
+        println!("ind_max {:?}", &locminmax.ind_max);
+        println!("ind_min {:?}", &locminmax.ind_min);*/
+        if locminmax.ind_max.len() == 1 {
+            if locminmax.ind_min.len() == 0 {
+                amp_pzub = find_min(&locminmax.diff_loc);
+            } else if locminmax.ind_min.len() == 1 {
+                if locminmax.ind_max[0] < locminmax.ind_min[0] {
+                    amp_pzub = find_min(&locminmax.diff_loc[..2].to_vec());
+                } else if locminmax.ind_max[0] > locminmax.ind_min[0] {
+                    amp_pzub = find_min(&locminmax.diff_loc[1..3].to_vec());
+                }
+            } else if locminmax.ind_min.len() == 2 {
+                amp_pzub = find_min(&locminmax.diff_loc[1..3].to_vec());
+            }
+        } else if locminmax.ind_max.len() == 2 {
+            if locminmax.ind_min.len() == 1 {
+                amp_pzub1 = find_min(&locminmax.diff_loc[..2].to_vec());
+                amp_pzub2 = find_min(&locminmax.diff_loc[2..].to_vec());
+            } else if locminmax.ind_min.len() == 2 {
+                if locminmax.ind_max[0] < locminmax.ind_min[0] {
+                    amp_pzub1 = find_min(&locminmax.diff_loc[..2].to_vec());
+                    amp_pzub2 = find_min(&locminmax.diff_loc[2..4].to_vec());
+                } else if locminmax.ind_max[0] > locminmax.ind_min[0] {
+                    amp_pzub1 = find_min(&locminmax.diff_loc[1..3].to_vec());
+                    amp_pzub2 = find_min(&locminmax.diff_loc[3..].to_vec());
+                }
+            } else if locminmax.ind_min.len() == 3 {
+                amp_pzub1 = find_min(&locminmax.diff_loc[1..3].to_vec());
+                amp_pzub2 = find_min(&locminmax.diff_loc[3..5].to_vec());
+            }
+            if (amp_pzub1 > amp_pzub2) && (amp_pzub1 / amp_pzub2 > 10.0) {   // > 10.0
+                amp_pzub = amp_pzub1;
+            } else if (amp_pzub2 > amp_pzub1) && (amp_pzub2 / amp_pzub1 > 10.0) {   // > 10.0
+                amp_pzub = amp_pzub2;
+            }
+        }
+        if (amp_pzub > self.mean_amp_p * 0.04) && (amp_pzub > 0.003) {
+        // if (amp_pzub > self.mean_amp_p * 0.05) && (amp_pzub > 0.0035) {
+            pzub = 1.0;
+        }
+        pzub
+    }
+
+    pub fn get_P_in_lead(&mut self, num: u8, time_param: &TimeParam) -> Vec<f32> {
+        let lead = Lead::new(num);
         let b: Vec<f32> = vec![0.02155836, 0.04311672, 0.02155836];
         let a: Vec<f32> = vec![1.0, -1.54383625, 0.6300697];
         let bh: Vec<f32> = vec![0.99749302, -0.99749302];
         let ah: Vec<f32> = vec![1.0, -0.99498604];
-        let mut p1: Vec<f32> = vec![0.0; rparam.r_pos.len()];
-        let mut p2: Vec<f32> = vec![0.0; rparam.r_pos.len()];
-        let mut p3: Vec<f32> = vec![0.0; rparam.r_pos.len()];
-        let mut out: Vec<f32> = vec![0.0; rparam.r_pos.len()];
-        for i in 4..rparam.r_pos.len() {
-            let len_pr = rparam.intervals[i].sqrt() * 3.7;
-            let beth_pr = rparam.intervals[i].sqrt() * 0.66;
-            let start = (rparam.r_pos[i] - len_pr) as usize;
-            let stop = (rparam.r_pos[i] - beth_pr) as usize;
-            let start1 = (rparam.r_pos[i] - self.mean_PR1 - 15.0) as usize;
-            let start2 = (rparam.r_pos[i] - self.mean_PR2 - 15.0) as usize;
-            let start3 = (rparam.r_pos[i] - self.mean_PR3 - 15.0) as usize;
-            let stop1 = (rparam.r_pos[i] - self.mean_PR1 + self.mean_PR1.sqrt() * 3.0) as usize;
-            let stop2 = (rparam.r_pos[i] - self.mean_PR2 + self.mean_PR2.sqrt() * 3.0) as usize;
-            let stop3 = (rparam.r_pos[i] - self.mean_PR3 + self.mean_PR3.sqrt() * 3.0) as usize;
-            if self.mean_PR1 > rparam.intervals[i] * 0.36 {
-                let fragment_l1 = leads.lead1[start..stop].to_vec();
+        let mut p: Vec<f32> = vec![0.0; time_param.r_pos.len()];
+        let mut out: Vec<f32> = vec![0.0; time_param.r_pos.len()];
+        self.get_mean_amp_pos(&lead, time_param);
+        for i in 4..time_param.r_pos.len() {
+            let len_pr = time_param.intervals[i].sqrt() * 3.7;
+            let beth_pr = time_param.intervals[i].sqrt() * 0.66;
+            let start = (time_param.r_pos[i] - len_pr) as usize;
+            let stop = (time_param.r_pos[i] - beth_pr) as usize;
+            let start1 = (time_param.r_pos[i] - self.mean_PR - 15.0) as usize;
+            let stop1 = (time_param.r_pos[i] - self.mean_PR + self.mean_PR.sqrt() * 3.0) as usize;
+            let fragment: Vec<f32> = if self.mean_PR > time_param.intervals[i] * 0.36 {
+                lead.lead[start..stop].to_vec()
             } else {
-                let fragment_l1 = leads.lead1[start1..stop1].to_vec();
-            }
-            if self.mean_PR2 > rparam.intervals[i] * 0.36 {
-                let fragment_l2 = leads.lead2[start..stop].to_vec();
+                lead.lead[start1..stop1].to_vec()
+            };
+            if time_param.chars[i] == 'N' {
+                let fragment = my_filtfilt(&b, &a, &fragment);
+                let fragment = my_filtfilt(&bh, &ah, &fragment);
+                let pzub = self.find_p(&fragment);
+                p[i] = pzub;
             } else {
-                let fragment_l2 = leads.lead2[start2..stop2].to_vec();
-            }
-            if self.mean_PR3 > rparam.intervals[i] * 0.36 {
-                let fragment_l3 = leads.lead3[start..stop].to_vec();
-            } else {
-                let fragment_l3 = leads.lead3[start3..stop3].to_vec();
+                p[i] = 1.0;
             }
         }
+        p
     }
 }

@@ -5,30 +5,30 @@ use std::fs::File;
 use std::io::{BufRead, BufReader};
 
 
-pub struct Rparam {
+pub struct TimeParam {
     pub r_pos: Vec<f32>,
     pub intervals: Vec<f32>,
     pub inds_min_diff: Vec<usize>,
-    pub f_intervals: Vec<f32>,
-    pub average_intervals: Vec<f32>,
+    pub clear_intervals: Vec<f32>,
+    pub threshold: Vec<f32>,
     pub chars: Vec<char>,
 }
 
-impl Rparam {
-    pub fn new() -> Rparam {
-        let mut r_param = Rparam {
+impl TimeParam {
+    pub fn new() -> TimeParam {
+        let mut time_param = TimeParam {
             r_pos: vec![],
             intervals: vec![],
             inds_min_diff: vec![],
-            f_intervals: vec![],
-            average_intervals: vec![],
+            clear_intervals: vec![],
+            threshold: vec![],
             chars: vec![],
         };
-        r_param.parse_b_txt();
-        r_param.get_inds_min_diff();
-        r_param.get_fintervals();
-        r_param.get_average_intervals();
-        r_param
+        time_param.parse_b_txt();
+        time_param.get_inds_min_diff();
+        time_param.get_clear_intervals();
+        time_param.get_threshold();
+        time_param
     }
 
     fn parse_b_txt(&mut self) {
@@ -61,7 +61,7 @@ impl Rparam {
         }
     }
 
-    fn get_fintervals(&mut self) {
+    fn get_clear_intervals(&mut self) {
         let mut max_diff: f32 = 0.0;
         let mut mean_intervals: f32 = 0.0;
         let trs = 0.99;
@@ -89,15 +89,15 @@ impl Rparam {
                     / 5.0;
                 if (self.chars[i] == 'V') && (self.chars[i + 1] == 'V') && (max_diff > 100.0) {
                     // max_diff > 100
-                    self.f_intervals
+                    self.clear_intervals
                         .push(mean_intervals + ((&self.intervals[i] - mean_intervals) * 0.2));
                     step = 1;
                 } else if (self.chars[i] == 'V') && (self.chars[i + 1] != 'V') && (max_diff > 40.0)
                 {
                     // max_diff > 40
-                    self.f_intervals
+                    self.clear_intervals
                         .push(mean_intervals + ((&self.intervals[i] - mean_intervals) * 0.2));
-                    self.f_intervals
+                    self.clear_intervals
                         .push(mean_intervals + ((&self.intervals[i + 1] - mean_intervals) * 0.2));
                     step = 2;
                 } else if self.chars[i] == 'V' {
@@ -115,33 +115,33 @@ impl Rparam {
                     let max_cor = vec_cor.iter().fold(f32::MIN, |acc, &x| acc.max(x));
                     let diff21 = tf[2] + tf[0] - 2.0 * tf[1];
                     if (max_cor > trs) || (diff21 > 160.0) {
-                        self.f_intervals
+                        self.clear_intervals
                             .push(mean_intervals + ((&self.intervals[i] - mean_intervals) * 0.2));
-                        self.f_intervals.push(
+                        self.clear_intervals.push(
                             mean_intervals + ((&self.intervals[i + 1] - mean_intervals) * 0.2),
                         );
                         step = 2;
                     } else {
-                        self.f_intervals
+                        self.clear_intervals
                             .push(mean_intervals + ((&self.intervals[i] - mean_intervals) * 0.2));
                         step = 1;
                     }
                 } else {
-                    self.f_intervals.push(self.intervals[i]);
+                    self.clear_intervals.push(self.intervals[i]);
                     step = 1;
                 }
             } else {
-                self.f_intervals.push(self.intervals[i]);
+                self.clear_intervals.push(self.intervals[i]);
                 step = 1;
             }
         }
     }
 
-    fn get_average_intervals(&mut self) {
-        self.average_intervals = step_moving_average(&self.f_intervals, 2);
-        self.average_intervals = step_moving_average(&self.average_intervals, 3);
-        self.average_intervals = step_moving_average(&self.average_intervals, 2);
-        self.average_intervals = moving_average(&self.average_intervals, 12);
+    fn get_threshold(&mut self) {
+        self.threshold = step_moving_average(&self.clear_intervals, 2);
+        self.threshold = step_moving_average(&self.threshold, 3);
+        self.threshold = step_moving_average(&self.threshold, 2);
+        self.threshold = moving_average(&self.threshold, 12);
     }
 
     fn get_inds_min_diff(&mut self) {
