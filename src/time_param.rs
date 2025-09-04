@@ -1,6 +1,5 @@
-use crate::moving_average;
 use crate::my_lib::get_coef_cor;
-use crate::my_lib::step_moving_average;
+use crate::my_lib::{step_moving_average, moving_average};
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 
@@ -51,9 +50,9 @@ impl TimeParam {
                         self.intervals.push(split_line[1].parse::<f32>().unwrap());
                         let char_in_line = end_line[0].chars().nth(0);
                         let char_end = char_in_line.unwrap_or_else(|| "A".chars().next().unwrap());
-                        if char_end == 'A' {
-                            println!("{} {:?}", i, end_line);
-                        }
+                        // if char_end == 'A' {
+                        //     println!("{} {:?}", i, end_line);
+                        // }
                         self.chars.push(char_end);
                     }
                 }

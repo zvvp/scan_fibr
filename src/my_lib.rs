@@ -238,14 +238,13 @@ pub fn get_max(data: &Vec<f32>) -> f32 {
     max
 }
 
-pub fn get_coef_p() -> Vec<f32> {
-    let time_param = TimeParam::new();
+pub fn get_coef_p(time_param: &TimeParam) -> Vec<f32> {
     let mut zub_p1 = Zubp::new();
     let mut zub_p2 = Zubp::new();
     let mut zub_p3 = Zubp::new();
-    let p1 = zub_p1.get_P_in_lead(1, &time_param);
-    let p2 = zub_p2.get_P_in_lead(2, &time_param);
-    let p3 = zub_p3.get_P_in_lead(3, &time_param);
+    let p1 = zub_p1.get_P_in_lead(1, time_param);
+    let p2 = zub_p2.get_P_in_lead(2, time_param);
+    let p3 = zub_p3.get_P_in_lead(3, time_param);
     let mut out: Vec<f32> = vec![0.0; time_param.r_pos.len()];
     for i in 4..p1.len() {
         let mut sum_p1 = p1[i - 4] + p1[i - 3] + p1[i - 2] + p1[i - 1] + p1[i];
@@ -287,6 +286,17 @@ pub fn get_coef_p() -> Vec<f32> {
     out = truncate_win2(&out, 0.6, 80);
     out = truncate_win2(&out, 0.6, 80);
     out = truncate_win2(&out, 0.6, 80);
+    out = step_moving_average(&out, 8);
+    out = moving_average(&out, 12);
+    out
+}
+
+pub fn get_coef_fibr(coef_p: &Vec<f32>, coef_disp: &Vec<f32>, time_param: &TimeParam) -> Vec<f32> {
+    let mut out: Vec<f32> = vec![0.0; coef_p.len()];
+    for i in 0..coef_p.len() {
+        out[i] = coef_p[i] * coef_disp[i] * (0.5 + 100.0 / time_param.clear_intervals[i]);
+    }
+    out = truncate_win2(&out, 0.7, 80);
     out = step_moving_average(&out, 8);
     out = moving_average(&out, 12);
     out
