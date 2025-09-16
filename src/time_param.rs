@@ -31,7 +31,7 @@ impl TimeParam {
     }
 
     fn parse_b_txt(&mut self) {
-        let path_b = "C:\\EcgVar\\B.txt";
+        let path_b = "B.txt";
         let file = File::open(&path_b).unwrap();
         let reader = BufReader::new(&file);
         let mut line = String::new();
