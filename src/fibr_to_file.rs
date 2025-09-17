@@ -8,10 +8,16 @@ use std::fs::File;
 use std::io::BufWriter;
 // use std::fs::OpenOptions;
 use std::io::Write;
+use ndarray_npy::write_npy;
+use ndarray::{Array, Array1};
 
 
 pub fn fibr_to_f_txt() {
     let time_param = TimeParam::new();
+    let clear_intervals = time_param.clear_intervals.clone();
+    let data_i64: Vec<i64> = clear_intervals.iter().map(|&x| x as i64).collect();
+    let array: Array1<i64> = Array::from_vec(data_i64);
+    write_npy("clear_intervals.npy", &array);
     let trs = &time_param.threshold;
     let r_pos = &time_param.r_pos;
     let coef_p = get_coef_p(&time_param);

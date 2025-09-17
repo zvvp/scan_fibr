@@ -99,7 +99,7 @@ impl TimeParam {
                     self.clear_intervals
                         .push(mean_intervals + ((&self.intervals[i + 1] - mean_intervals) * 0.2));
                     step = 2;
-                } else if self.chars[i] == 'V' {
+                } else if (self.chars[i] != 'V') && (max_diff > 100.0) {
                     //  else if self.chars[i] == 'N'
                     let tf: &Vec<f32> = &self.intervals[i - 1..i + 3].to_vec();
                     // let tf: Vec<f32> = tf.iter().map(|x| *x as f32).collect();

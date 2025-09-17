@@ -294,7 +294,7 @@ pub fn get_coef_p(time_param: &TimeParam) -> Vec<f32> {
 pub fn get_coef_fibr(coef_p: &Vec<f32>, coef_disp: &Vec<f32>, time_param: &TimeParam) -> Vec<f32> {
     let mut out: Vec<f32> = vec![0.0; coef_p.len()];
     for i in 0..coef_p.len() {
-        out[i] = coef_p[i] * coef_disp[i] * (0.5 + 100.0 / time_param.clear_intervals[i]);
+        out[i] = coef_p[i] * coef_disp[i] * (0.5 + 100.0 / time_param.threshold[i]);
     }
     out = truncate_win2(&out, 0.7, 80);
     out = step_moving_average(&out, 8);
