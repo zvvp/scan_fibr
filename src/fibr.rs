@@ -23,10 +23,14 @@ impl Fibr {
         if coef_fibr[0] > trs[0] {
             self.start_ind_arr.push(r_pos[start_ind] as usize + start_time_in_samples);
             flag = true;
-        }
+        } 
         for i in 0..coef_fibr.len() - 1 {
             if (flag == false) && (coef_fibr[i] < trs[i]) && (coef_fibr[i + 1] > trs[i + 1]) && (mask[i] == 1) {
-                if i - stop_ind > min_size {
+                if i < min_size {
+                    start_ind = i;
+                    self.start_ind_arr.push(r_pos[start_ind] as usize + start_time_in_samples);
+                
+                } else if i - stop_ind > min_size {
                     start_ind = i;
                     self.start_ind_arr.push(r_pos[start_ind] as usize + start_time_in_samples);
                 } else {
@@ -56,8 +60,11 @@ impl Fibr {
                 }
             }
         }
-        for i in 0..self.start_ind_arr.len() {
-            self.diff_stop_start.push(self.stop_ind_arr[i] - self.start_ind_arr[i]);
+        if (self.start_ind_arr.len() > 0) && (self.stop_ind_arr.len() > 0) {
+            for i in 0..self.start_ind_arr.len() {
+                self.diff_stop_start.push(self.stop_ind_arr[i] - self.start_ind_arr[i]);
+            }
         }
+        
     }
 }

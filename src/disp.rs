@@ -51,7 +51,7 @@ pub fn get_coef_disp(time_param: &TimeParam) -> Vec<f32> {
         } else {
             0.0
         };
-        out[i] = mean_sort_diff * 0.35;
+        out[i] = mean_sort_diff * 0.3; // 0.35
     }
     for i in 0..30 {
         out[i] = out[30];
