@@ -26,6 +26,7 @@ impl Pacient {
     fn parse_pacient_card(&mut self) {
         let files = glob::glob("*.ecg").expect("Failed to read files");
         let fname = files.filter_map(Result::ok).next().unwrap();
+        println!("File: {}", fname.to_str().unwrap());
         self.file_name = fname.to_str().unwrap().to_string();
 
         let len_file: u32= metadata(fname).unwrap().len() as u32;

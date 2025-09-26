@@ -242,9 +242,17 @@ pub fn get_coef_p(time_param: &TimeParam) -> Vec<f32> {
     let mut zub_p1 = Zubp::new();
     let mut zub_p2 = Zubp::new();
     let mut zub_p3 = Zubp::new();
-    let p1 = zub_p1.get_P_in_lead(1, time_param);
-    let p2 = zub_p2.get_P_in_lead(2, time_param);
-    let p3 = zub_p3.get_P_in_lead(3, time_param);
+
+    let p1 = zub_p1.get_p_in_lead(1, time_param);
+    let p2 = zub_p2.get_p_in_lead(2, time_param);
+    let p3 = zub_p3.get_p_in_lead(3, time_param);
+    println!("inds_min_diff.len(): {}", time_param.inds_min_diff.len());
+    println!("mean_amp_p1: {}", zub_p1.mean_amp_p);
+    println!("mean_amp_p2: {}", zub_p2.mean_amp_p);
+    println!("mean_amp_p3: {}", zub_p3.mean_amp_p);
+    println!("mean_PR1: {}", zub_p1.mean_pr);
+    println!("mean_PR2: {}", zub_p2.mean_pr);
+    println!("mean_PR3: {}", zub_p3.mean_pr);
     let mut out: Vec<f32> = vec![0.0; time_param.r_pos.len()];
     for i in 4..p1.len() {
         let mut sum_p1 = p1[i - 4] + p1[i - 3] + p1[i - 2] + p1[i - 1] + p1[i];
@@ -270,34 +278,52 @@ pub fn get_coef_p(time_param: &TimeParam) -> Vec<f32> {
                 sum_p3 = (sum_p1 + sum_p2) / 2.0;
             }
         }
-        let sum_buf = sum_p1 * sum_p2 * sum_p3 * 0.16;  // * 0.25;
+        let sum_buf = sum_p1 * sum_p2 * sum_p3 * 0.38;  // * 0.25;
         out[i - 2] = sum_buf;
     }
     let max_out: f32 = out.iter().fold(f32::MIN, |a, b| a.max(*b));
     for i in 0..out.len() {
-        out[i] = -(out[i] - max_out) * 1.25;
+        out[i] = -(out[i] - max_out);
     }
     let out_len = out.len();
     out[0] = out[2];
     out[0] = out[2];
     out[out_len-2] = out[out_len-3];
     out[out_len-1] = out[out_len-3];
-    out = truncate_win2(&out, 0.6, 80);
-    out = truncate_win2(&out, 0.6, 80);
-    out = truncate_win2(&out, 0.6, 80);
-    out = truncate_win2(&out, 0.6, 80);
-    out = step_moving_average(&out, 8);
-    out = moving_average(&out, 12);
+    // out = truncate_win2(&out, 0.6, 80);
+    // out = truncate_win2(&out, 0.6, 80);
+    // out = truncate_win2(&out, 0.6, 80);
+    // out = truncate_win2(&out, 0.6, 80);
+    out = step_moving_average(&out, 20);
+    out = moving_average(&out, 40);
+    out = moving_average(&out, 20);
     out
 }
 
 pub fn get_coef_fibr(coef_p: &Vec<f32>, coef_disp: &Vec<f32>, time_param: &TimeParam) -> Vec<f32> {
     let mut out: Vec<f32> = vec![0.0; coef_p.len()];
     for i in 0..coef_p.len() {
-        out[i] = coef_p[i] * coef_disp[i] * (0.5 + 100.0 / time_param.threshold[i]);
+        out[i] = coef_p[i] * coef_disp[i] * (0.5 + 100.0 / time_param.threshold[i]) * 0.9;
     }
-    out = truncate_win2(&out, 0.7, 80);
-    out = step_moving_average(&out, 8);
-    out = moving_average(&out, 12);
+    out = truncate_win2(&out, 0.85, 160);
+    out = truncate_win2(&out, 0.75, 80);
+    // out = step_moving_average(&out, 8);
+    // out = moving_average(&out, 12);
     out
+}
+
+pub fn median(vec: &mut Vec<f32>) -> f32 {
+    // Сортируем вектор
+    vec.sort_by(|a, b| a.partial_cmp(b).unwrap());
+
+    let len = vec.len();
+    if len % 2 == 0 {
+        // Если четное количество элементов
+        let mid1 = vec[len / 2 - 1];
+        let mid2 = vec[len / 2];
+        (mid1 + mid2) / 2.0
+    } else {
+        // Если нечетное количество элементов
+        vec[len / 2]
+    }
 }

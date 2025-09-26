@@ -51,7 +51,7 @@ pub fn get_coef_disp(time_param: &TimeParam) -> Vec<f32> {
         } else {
             0.0
         };
-        out[i] = mean_sort_diff * 0.3; // 0.35
+        out[i] = mean_sort_diff * 0.35; // 0.35
     }
     for i in 0..30 {
         out[i] = out[30];
@@ -59,8 +59,8 @@ pub fn get_coef_disp(time_param: &TimeParam) -> Vec<f32> {
     for i in len_diff - 30..len_diff {
         out[i] = out[len_diff - 31];
     }
-    out = truncate_win2(&out, 0.8, 70);
-    out = step_moving_average(&out, 8);
-    out = moving_average(&out, 12);
+    // out = truncate_win2(&out, 0.8, 70);
+    // out = step_moving_average(&out, 8);
+    // out = moving_average(&out, 12);
     out
 }

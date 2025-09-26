@@ -3,7 +3,6 @@ use crate::fibr::Fibr;
 use crate::time_param::TimeParam;
 use crate::my_lib::{get_coef_p, get_coef_fibr};
 use crate::disp::get_coef_disp;
-use std::fmt::format;
 use std::fs::File;
 use std::io::BufWriter;
 // use std::fs::OpenOptions;
@@ -15,7 +14,7 @@ use ndarray::{Array, Array1};
 pub fn fibr_to_f_txt() {
     let time_param = TimeParam::new();
 
-    let clear_intervals = time_param.clear_intervals.clone();
+    // let clear_intervals = time_param.clear_intervals.clone();
 
     // let data_i64: Vec<i64> = clear_intervals.iter().map(|&x| x as i64).collect();
     // let array: Array1<i64> = Array::from_vec(data_i64);
@@ -25,26 +24,26 @@ pub fn fibr_to_f_txt() {
 
     let data_i64: Vec<i64> = trs.iter().map(|&x| x as i64).collect();
     let array: Array1<i64> = Array::from_vec(data_i64);
-    write_npy("trs.npy", &array);
+    let _ = write_npy("trs.npy", &array);
 
     let r_pos = &time_param.r_pos;
     let coef_p = get_coef_p(&time_param);
 
-    let data_i64: Vec<i64> = coef_p.iter().map(|&x| x as i64).collect();
-    let array: Array1<i64> = Array::from_vec(data_i64);
-    write_npy("coef_p.npy", &array);
+    let data_f64: Vec<f64> = coef_p.iter().map(|&x| x as f64).collect();
+    let array: Array1<f64> = Array::from_vec(data_f64);
+    let _ = write_npy("coef_p.npy", &array);
 
     let coef_disp = get_coef_disp(&time_param);
 
-    let data_i64: Vec<i64> = coef_disp.iter().map(|&x| x as i64).collect();
-    let array: Array1<i64> = Array::from_vec(data_i64);
-    write_npy("coef_disp.npy", &array);
+    let data_f64: Vec<f64> = coef_disp.iter().map(|&x| x as f64).collect();
+    let array: Array1<f64> = Array::from_vec(data_f64);
+    let _ = write_npy("coef_disp.npy", &array);
 
     let coef_fibr = get_coef_fibr(&coef_p, &coef_disp, &time_param);
 
-    let data_i64: Vec<i64> = coef_fibr.iter().map(|&x| x as i64).collect();
-    let array: Array1<i64> = Array::from_vec(data_i64);
-    write_npy("coef_fibr.npy", &array);
+    let data_f64: Vec<f64> = coef_fibr.iter().map(|&x| x as f64).collect();
+    let array: Array1<f64> = Array::from_vec(data_f64);
+    let _ = write_npy("coef_fibr.npy", &array);
 
     let mask: Vec<usize> = vec![1; coef_fibr.len()];
     let pacient = Pacient::new();

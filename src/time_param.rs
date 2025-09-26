@@ -34,10 +34,10 @@ impl TimeParam {
         let path_b = "B.txt";
         let file = File::open(&path_b).unwrap();
         let reader = BufReader::new(&file);
-        let mut line = String::new();
+        // let mut line = String::new();
         // for res_line in reader.lines() {
-        for (i, res_line) in reader.lines().enumerate() {
-            line = match res_line {
+        for (_i, res_line) in reader.lines().enumerate() {
+            let line: String = match res_line {
                 Ok(val) => val,
                 Err(_err) => continue,
             };
@@ -61,8 +61,8 @@ impl TimeParam {
     }
 
     fn get_clear_intervals(&mut self) {
-        let mut max_diff: f32 = 0.0;
-        let mut mean_intervals: f32 = 0.0;
+        // let mut max_diff: f32 = 0.0;
+        // let mut mean_intervals: f32 = 0.0;
         let trs = 0.99;
         let mut step: usize = 1;
 
@@ -75,12 +75,12 @@ impl TimeParam {
                 let diff0 = &self.intervals[i] - &self.intervals[i - 1];
                 let diff1 = &self.intervals[i + 1] - &self.intervals[i];
 
-                if diff0 >= diff1 {
-                    max_diff = diff0;
+                let max_diff = if diff0 >= diff1 {
+                    diff0
                 } else {
-                    max_diff = diff1;
-                }
-                mean_intervals = (&self.intervals[i - 3]
+                    diff1
+                };
+                let mean_intervals = (&self.intervals[i - 3]
                     + &self.intervals[i - 2]
                     + &self.intervals[i - 1]
                     + &self.intervals[i + 2]
@@ -153,10 +153,12 @@ impl TimeParam {
         массив индексов Vec<usize>, где абсолютная разница
         между последовательными интервалами меньше или равна 3.
         */
-        for i in 0..self.intervals.len() - 1 {
-            let diff = (self.intervals[i] - self.intervals[i + 1]).abs();
-            if diff <= 3.0 {
-                self.inds_min_diff.push(i);
+        for i in 1..self.intervals.len() - 1 {
+            if (self.chars[i] == 'N') && (self.chars[i - 1] == 'N') && (self.chars[i + 1] == 'N') {
+                let diff = (self.intervals[i] - self.intervals[i + 1]).abs();
+                if diff <= 3.0 {
+                    self.inds_min_diff.push(i);
+                }
             }
         }
     }
