@@ -261,13 +261,13 @@ pub fn get_coef_p(time_param: &TimeParam) -> Vec<f32> {
     let p1 = zub_p1.get_p_in_lead(1, time_param);
     let p2 = zub_p2.get_p_in_lead(2, time_param);
     let p3 = zub_p3.get_p_in_lead(3, time_param);
-    println!("inds_min_diff.len(): {}", time_param.inds_min_diff.len());
-    println!("mean_amp_p1: {}", zub_p1.mean_amp_p);
-    println!("mean_amp_p2: {}", zub_p2.mean_amp_p);
-    println!("mean_amp_p3: {}", zub_p3.mean_amp_p);
-    println!("mean_PR1: {}", zub_p1.mean_pr);
-    println!("mean_PR2: {}", zub_p2.mean_pr);
-    println!("mean_PR3: {}", zub_p3.mean_pr);
+    // println!("inds_min_diff.len(): {}", time_param.inds_min_diff.len());
+    // println!("mean_amp_p1: {}", zub_p1.mean_amp_p);
+    // println!("mean_amp_p2: {}", zub_p2.mean_amp_p);
+    // println!("mean_amp_p3: {}", zub_p3.mean_amp_p);
+    // println!("mean_PR1: {}", zub_p1.mean_pr);
+    // println!("mean_PR2: {}", zub_p2.mean_pr);
+    // println!("mean_PR3: {}", zub_p3.mean_pr);
     let mut out: Vec<f32> = vec![0.0; time_param.r_pos.len()];
     for i in 4..p1.len() {
         let mut sum_p1 = p1[i - 4] + p1[i - 3] + p1[i - 2] + p1[i - 1] + p1[i];

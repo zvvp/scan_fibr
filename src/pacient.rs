@@ -40,7 +40,7 @@ impl Pacient {
                 return;
             },
         };
-        println!("File: {}", fname.to_str().unwrap());
+        // println!("File: {}", fname.to_str().unwrap());
         self.file_name = fname.to_str().unwrap().to_string();
 
         let len_file: u32= metadata(fname).unwrap().len() as u32;

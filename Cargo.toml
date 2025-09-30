@@ -3,6 +3,7 @@ name = "scan_fibr"
 version = "0.1.0"
 edition = "2024"
 
+
 [dependencies]
 npy = "0.4.0"
 ndarray = "0.16.1"

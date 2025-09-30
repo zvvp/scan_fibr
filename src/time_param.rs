@@ -31,7 +31,7 @@ impl TimeParam {
     }
 
     fn parse_b_txt(&mut self) {
-        let path_b = "B.txt";
+        let path_b = "c:\\EcgVar\\B.txt";
         let file = File::open(&path_b);
         let file = match file {
             Ok(file) => file,
