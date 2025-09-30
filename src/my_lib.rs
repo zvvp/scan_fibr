@@ -1,3 +1,4 @@
+use native_dialog::{DialogBuilder, MessageLevel};
 use ndarray::Array1;
 use ndarray_npy::read_npy;
 use crate::time_param::TimeParam;
@@ -6,17 +7,31 @@ use crate::zub_p::Zubp;
 pub struct Lead {
     pub lead: Vec<f32>,
 }
-
 impl Lead {
     pub fn new(num: u8) -> Lead {
-        let current_dir = std::env::current_dir().unwrap();
-        // println!("Current directory: {}", current_dir.display());
-        let arr: Array1<f32> = match num {
-            1 => read_npy(current_dir.join("clean_lead1.npy")).unwrap(),
-            2 => read_npy(current_dir.join("clean_lead2.npy")).unwrap(),
-            3 => read_npy(current_dir.join("clean_lead3.npy")).unwrap(),
-            _ => panic!(),
+        let files = glob::glob("clean_lead*.npy").expect("Failed to read files");
+        let arr = if files.count() == 3 {
+            let current_dir = std::env::current_dir().unwrap();
+            let arr: Array1<f32> = match num {
+                1 => read_npy(current_dir.join("clean_lead1.npy")).unwrap(),
+                2 => read_npy(current_dir.join("clean_lead2.npy")).unwrap(),
+                3 => read_npy(current_dir.join("clean_lead3.npy")).unwrap(),
+                _ => panic!(),
+            };
+            arr
+        } else {
+            DialogBuilder::message()
+                .set_level(MessageLevel::Error)
+                .set_title("Ошибка")
+                .set_text("В текущей директории не найдены файлы: \nclean_lead1.npy \nclean_lead2.npy \nclean_lead3.npy")
+                .alert()
+                .show()
+                .unwrap();
+            let vec:Vec<f32> = vec![];
+            let arr = Array1::from_vec(vec);
+            arr
         };
+
         Lead {
             lead: arr.to_vec()
         }
@@ -290,10 +305,6 @@ pub fn get_coef_p(time_param: &TimeParam) -> Vec<f32> {
     out[0] = out[2];
     out[out_len-2] = out[out_len-3];
     out[out_len-1] = out[out_len-3];
-    // out = truncate_win2(&out, 0.6, 80);
-    // out = truncate_win2(&out, 0.6, 80);
-    // out = truncate_win2(&out, 0.6, 80);
-    // out = truncate_win2(&out, 0.6, 80);
     out = step_moving_average(&out, 20);
     out = moving_average(&out, 40);
     out = moving_average(&out, 20);
