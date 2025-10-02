@@ -242,6 +242,13 @@ pub fn get_coef_p(time_param: &TimeParam) -> Vec<f32> {
     let mut zub_p1 = Zubp::new();
     let mut zub_p2 = Zubp::new();
     let mut zub_p3 = Zubp::new();
+    zub_p1.get_mean_amp_pos(1, time_param);
+    zub_p2.get_mean_amp_pos(2, time_param);
+    zub_p3.get_mean_amp_pos(3, time_param);
+    let mut pr = (zub_p1.mean_pr + zub_p2.mean_pr + zub_p3.mean_pr) / 3.0;
+    zub_p1.mean_pr = pr;
+    zub_p2.mean_pr = pr;
+    zub_p3.mean_pr = pr;
 
     let p1 = zub_p1.get_p_in_lead(1, time_param);
     let p2 = zub_p2.get_p_in_lead(2, time_param);
@@ -278,8 +285,9 @@ pub fn get_coef_p(time_param: &TimeParam) -> Vec<f32> {
                 sum_p3 = (sum_p1 + sum_p2) / 2.0;
             }
         }
-        let sum_buf = sum_p1 * sum_p2 * sum_p3 * 0.38;  // * 0.25;
+        let sum_buf = sum_p1 * sum_p2 * sum_p3 * 0.5;  // * 0.38;
         out[i - 2] = sum_buf;
+        // out[i] = sum_buf;
     }
     let max_out: f32 = out.iter().fold(f32::MIN, |a, b| a.max(*b));
     for i in 0..out.len() {
@@ -287,11 +295,11 @@ pub fn get_coef_p(time_param: &TimeParam) -> Vec<f32> {
     }
     let out_len = out.len();
     out[0] = out[2];
-    out[0] = out[2];
+    out[1] = out[2];
     out[out_len-2] = out[out_len-3];
     out[out_len-1] = out[out_len-3];
-    // out = truncate_win2(&out, 0.6, 80);
-    // out = truncate_win2(&out, 0.6, 80);
+    out = truncate_win2(&out, 0.85, 160);
+    out = truncate_win2(&out, 0.75, 80);
     // out = truncate_win2(&out, 0.6, 80);
     // out = truncate_win2(&out, 0.6, 80);
     out = step_moving_average(&out, 20);
@@ -303,7 +311,7 @@ pub fn get_coef_p(time_param: &TimeParam) -> Vec<f32> {
 pub fn get_coef_fibr(coef_p: &Vec<f32>, coef_disp: &Vec<f32>, time_param: &TimeParam) -> Vec<f32> {
     let mut out: Vec<f32> = vec![0.0; coef_p.len()];
     for i in 0..coef_p.len() {
-        out[i] = coef_p[i] * coef_disp[i] * (0.5 + 100.0 / time_param.threshold[i]) * 0.9;
+        out[i] = coef_p[i] * coef_disp[i] * (0.5 + 100.0 / time_param.threshold[i]);
     }
     out = truncate_win2(&out, 0.85, 160);
     out = truncate_win2(&out, 0.75, 80);
@@ -325,5 +333,12 @@ pub fn median(vec: &mut Vec<f32>) -> f32 {
     } else {
         // Если нечетное количество элементов
         vec[len / 2]
+    }
+}
+
+pub fn cut_neg(vec: &mut Vec<f32>) {
+    let len_vec = vec.len();
+    for i in 0..len_vec {
+        if vec[i] < 0.0 {vec[i] = 0.0};
     }
 }
