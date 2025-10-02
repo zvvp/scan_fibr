@@ -300,7 +300,7 @@ pub fn get_coef_p(time_param: &TimeParam) -> Vec<f32> {
                 sum_p3 = (sum_p1 + sum_p2) / 2.0;
             }
         }
-        let sum_buf = sum_p1 * sum_p2 * sum_p3 * 0.5;  // * 0.38;
+        let sum_buf = sum_p1 * sum_p2 * sum_p3 * 0.38;  // * 0.38;
         out[i - 2] = sum_buf;
     }
     let max_out: f32 = out.iter().fold(f32::MIN, |a, b| a.max(*b));
