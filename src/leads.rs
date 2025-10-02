@@ -11,7 +11,7 @@ pub struct Leads {
 impl Leads {
     pub fn new() -> Leads {
         let current_dir = std::env::current_dir().unwrap();
-        println!("Current directory: {}", current_dir.display());
+        // println!("Current directory: {}", current_dir.display());
         let mut buf = vec![];
         std::fs::File::open(current_dir.join("clean_lead1.npy")).unwrap().read_to_end(&mut buf).unwrap();
         let lead1:NpyData<f32> = NpyData::from_bytes(&buf).unwrap();

@@ -1,3 +1,4 @@
+use native_dialog::{DialogBuilder, MessageLevel};
 use ndarray::Array1;
 use ndarray_npy::read_npy;
 use crate::time_param::TimeParam;
@@ -6,17 +7,31 @@ use crate::zub_p::Zubp;
 pub struct Lead {
     pub lead: Vec<f32>,
 }
-
 impl Lead {
     pub fn new(num: u8) -> Lead {
-        let current_dir = std::env::current_dir().unwrap();
-        // println!("Current directory: {}", current_dir.display());
-        let arr: Array1<f32> = match num {
-            1 => read_npy(current_dir.join("clean_lead1.npy")).unwrap(),
-            2 => read_npy(current_dir.join("clean_lead2.npy")).unwrap(),
-            3 => read_npy(current_dir.join("clean_lead3.npy")).unwrap(),
-            _ => panic!(),
+        let files = glob::glob("clean_lead*.npy").expect("Failed to read files");
+        let arr = if files.count() == 3 {
+            let current_dir = std::env::current_dir().unwrap();
+            let arr: Array1<f32> = match num {
+                1 => read_npy(current_dir.join("clean_lead1.npy")).unwrap(),
+                2 => read_npy(current_dir.join("clean_lead2.npy")).unwrap(),
+                3 => read_npy(current_dir.join("clean_lead3.npy")).unwrap(),
+                _ => panic!(),
+            };
+            arr
+        } else {
+            DialogBuilder::message()
+                .set_level(MessageLevel::Error)
+                .set_title("Ошибка")
+                .set_text("В текущей директории не найдены файлы: \nclean_lead1.npy \nclean_lead2.npy \nclean_lead3.npy")
+                .alert()
+                .show()
+                .unwrap();
+            let vec:Vec<f32> = vec![];
+            let arr = Array1::from_vec(vec);
+            arr
         };
+
         Lead {
             lead: arr.to_vec()
         }
@@ -253,13 +268,13 @@ pub fn get_coef_p(time_param: &TimeParam) -> Vec<f32> {
     let p1 = zub_p1.get_p_in_lead(1, time_param);
     let p2 = zub_p2.get_p_in_lead(2, time_param);
     let p3 = zub_p3.get_p_in_lead(3, time_param);
-    println!("inds_min_diff.len(): {}", time_param.inds_min_diff.len());
-    println!("mean_amp_p1: {}", zub_p1.mean_amp_p);
-    println!("mean_amp_p2: {}", zub_p2.mean_amp_p);
-    println!("mean_amp_p3: {}", zub_p3.mean_amp_p);
-    println!("mean_PR1: {}", zub_p1.mean_pr);
-    println!("mean_PR2: {}", zub_p2.mean_pr);
-    println!("mean_PR3: {}", zub_p3.mean_pr);
+    // println!("inds_min_diff.len(): {}", time_param.inds_min_diff.len());
+    // println!("mean_amp_p1: {}", zub_p1.mean_amp_p);
+    // println!("mean_amp_p2: {}", zub_p2.mean_amp_p);
+    // println!("mean_amp_p3: {}", zub_p3.mean_amp_p);
+    // println!("mean_PR1: {}", zub_p1.mean_pr);
+    // println!("mean_PR2: {}", zub_p2.mean_pr);
+    // println!("mean_PR3: {}", zub_p3.mean_pr);
     let mut out: Vec<f32> = vec![0.0; time_param.r_pos.len()];
     for i in 4..p1.len() {
         let mut sum_p1 = p1[i - 4] + p1[i - 3] + p1[i - 2] + p1[i - 1] + p1[i];
@@ -287,7 +302,6 @@ pub fn get_coef_p(time_param: &TimeParam) -> Vec<f32> {
         }
         let sum_buf = sum_p1 * sum_p2 * sum_p3 * 0.5;  // * 0.38;
         out[i - 2] = sum_buf;
-        // out[i] = sum_buf;
     }
     let max_out: f32 = out.iter().fold(f32::MIN, |a, b| a.max(*b));
     for i in 0..out.len() {

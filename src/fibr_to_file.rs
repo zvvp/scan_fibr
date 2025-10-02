@@ -14,42 +14,20 @@ use ndarray::{Array, Array1};
 pub fn fibr_to_f_txt() {
     let time_param = TimeParam::new();
 
-    // let clear_intervals = time_param.clear_intervals.clone();
-
-    // let data_i64: Vec<i64> = clear_intervals.iter().map(|&x| x as i64).collect();
-    // let array: Array1<i64> = Array::from_vec(data_i64);
-    // write_npy("clear_intervals.npy", &array);
-
     let trs = time_param.threshold.clone();
 
-    let data_i64: Vec<i64> = trs.iter().map(|&x| x as i64).collect();
-    let array: Array1<i64> = Array::from_vec(data_i64);
-    let _ = write_npy("trs.npy", &array);
-
     let r_pos = &time_param.r_pos;
-    let coef_p = get_coef_p(&time_param);
 
-    let data_f64: Vec<f64> = coef_p.iter().map(|&x| x as f64).collect();
-    let array: Array1<f64> = Array::from_vec(data_f64);
-    let _ = write_npy("coef_p.npy", &array);
+    let coef_p = get_coef_p(&time_param);
 
     let coef_disp = get_coef_disp(&time_param);
 
-    let data_f64: Vec<f64> = coef_disp.iter().map(|&x| x as f64).collect();
-    let array: Array1<f64> = Array::from_vec(data_f64);
-    let _ = write_npy("coef_disp.npy", &array);
-
     let coef_fibr = get_coef_fibr(&coef_p, &coef_disp, &time_param);
-
-    let data_f64: Vec<f64> = coef_fibr.iter().map(|&x| x as f64).collect();
-    let array: Array1<f64> = Array::from_vec(data_f64);
-    let _ = write_npy("coef_fibr.npy", &array);
 
     let mask: Vec<usize> = vec![1; coef_fibr.len()];
     let pacient = Pacient::new();
     let start_time_in_samples = pacient.start_time_in_samples;
     let fibr = Fibr::new(&coef_fibr, &trs, &r_pos, start_time_in_samples, &mask);
-    println!("{:?}", fibr);
 
     let mut text = pacient.file_name.clone();
     text.push_str("\n\n");
@@ -76,7 +54,7 @@ pub fn fibr_to_f_txt() {
     let total_time = format!("Общее время записи: {}:{}:{}", pacient.total_time.0, pacient.total_time.1, pacient.total_time.2);
     text.push_str(&total_time);
 
-    let file = File::create("F.txt").expect("Не удалось создать файл");
+    let file = File::create("c:\\EcgVar\\F.txt").expect("Не удалось создать файл");
     let mut writer = BufWriter::new(file);
     let text = text.as_bytes();
     writer.write_all(text).expect("Не удалось записать в файл");

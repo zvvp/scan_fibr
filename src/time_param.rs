@@ -1,8 +1,8 @@
 use crate::my_lib::get_coef_cor;
 use crate::my_lib::{step_moving_average, moving_average};
 use std::fs::File;
-use std::io::{BufRead, BufReader};
-
+use std::io::{BufRead, BufReader, ErrorKind};
+use native_dialog::{DialogBuilder, MessageLevel};
 
 pub struct TimeParam {
     pub r_pos: Vec<f32>,
@@ -31,8 +31,24 @@ impl TimeParam {
     }
 
     fn parse_b_txt(&mut self) {
-        let path_b = "B.txt";
-        let file = File::open(&path_b).unwrap();
+        let path_b = "c:\\EcgVar\\B.txt";
+        let file = File::open(&path_b);
+        let file = match file {
+            Ok(file) => file,
+            Err(err) => match err.kind() {
+                ErrorKind::NotFound => {
+                    DialogBuilder::message()
+                        .set_level(MessageLevel::Error)
+                        .set_title("Ошибка")
+                        .set_text("В директории c:\\EcgVar\\ отсутствует файл B.txt ")
+                        .alert()
+                        .show()
+                        .unwrap();
+                    return;
+                },
+                other_error => panic!("{:?}", other_error),
+            },
+        };
         let reader = BufReader::new(&file);
         // let mut line = String::new();
         // for res_line in reader.lines() {
@@ -50,9 +66,6 @@ impl TimeParam {
                         self.intervals.push(split_line[1].parse::<f32>().unwrap());
                         let char_in_line = end_line[0].chars().nth(0);
                         let char_end = char_in_line.unwrap_or_else(|| "A".chars().next().unwrap());
-                        // if char_end == 'A' {
-                        //     println!("{} {:?}", i, end_line);
-                        // }
                         self.chars.push(char_end);
                     }
                 }

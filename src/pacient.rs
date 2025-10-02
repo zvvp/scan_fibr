@@ -1,5 +1,6 @@
 use std::fs::{metadata, File};
 use std::io::{Read, Seek, SeekFrom};
+use native_dialog::{DialogBuilder, MessageLevel};
 
 
 #[derive(Debug)]
@@ -25,8 +26,21 @@ impl Pacient {
 
     fn parse_pacient_card(&mut self) {
         let files = glob::glob("*.ecg").expect("Failed to read files");
-        let fname = files.filter_map(Result::ok).next().unwrap();
-        println!("File: {}", fname.to_str().unwrap());
+        let fname = files.filter_map(Result::ok).next();
+        let fname = match fname {
+            Some(fname) => fname,
+            None => {
+                DialogBuilder::message()
+                    .set_level(MessageLevel::Error)
+                    .set_title("Ошибка")
+                    .set_text("В текущей директории не найден файл с расширением .ecg")
+                    .alert()
+                    .show()
+                    .unwrap();
+                return;
+            },
+        };
+        // println!("File: {}", fname.to_str().unwrap());
         self.file_name = fname.to_str().unwrap().to_string();
 
         let len_file: u32= metadata(fname).unwrap().len() as u32;
