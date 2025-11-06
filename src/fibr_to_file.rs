@@ -7,14 +7,13 @@ use std::fs::File;
 use std::io::BufWriter;
 // use std::fs::OpenOptions;
 use std::io::Write;
-use ndarray_npy::write_npy;
-use ndarray::{Array, Array1};
+
 
 
 pub fn fibr_to_f_txt() {
     let time_param = TimeParam::new();
 
-    let trs = time_param.threshold.clone();
+    let trs = &time_param.threshold;
 
     let r_pos = &time_param.r_pos;
 

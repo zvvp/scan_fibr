@@ -158,55 +158,74 @@ pub fn my_filtfilt(b: &Vec<f32>, a: &Vec<f32>, ch: &Vec<f32>) -> Vec<f32> {
     out
 }
 
+pub fn find_local_min(data: &Vec<f32>) -> (Vec<usize>, Vec<f32>) {
+    let mut ind_min: Vec<usize> = vec![];
+    let mut vec_min: Vec<f32> = vec![];
+    for i in 1..data.len() - 1 {
+        if data[i] < data[i - 1] && data[i] < data[i + 1] {
+            ind_min.push(i);
+            vec_min.push(data[i]);
+        }
+    }
+    if ind_min.len() == 0 {
+        ind_min.push(0);
+        vec_min.push(0.0);
+    }
+    (ind_min, vec_min)
+}
+
 pub fn find_local_max(data: &Vec<f32>) -> (Vec<usize>, Vec<f32>) {
     let mut ind_max: Vec<usize> = vec![];
     let mut vec_max: Vec<f32> = vec![];
     for i in 1..data.len() - 1 {
-
         if data[i] > data[i - 1] && data[i] > data[i + 1] {
             ind_max.push(i);
             vec_max.push(data[i]);
         }
     }
+    if ind_max.len() == 0 {
+        ind_max.push(0);
+        vec_max.push(0.0);
+    }
     (ind_max, vec_max)
 }
 
-pub struct LocMinMax {
-    pub ind_max: Vec<usize>,
-    pub ind_min: Vec<usize>,
-    pub ind_loc: Vec<usize>,
-    pub arr_loc: Vec<f32>,
-    pub diff_loc: Vec<f32>,
-}
+// pub struct LocMinMax {
+//     pub ind_max: Vec<usize>,
+//     pub ind_min: Vec<usize>,
+//     pub ind_loc: Vec<usize>,
+//     pub arr_loc: Vec<f32>,
+//     pub diff_loc: Vec<f32>,
+// }
 
-impl LocMinMax {
-    pub fn new(data: &Vec<f32>) -> LocMinMax {
-        let mut locminmax = LocMinMax {
-            ind_max: vec![],
-            ind_min: vec![],
-            ind_loc: vec![],
-            arr_loc: vec![],
-            diff_loc: vec![],
-        };
-        locminmax.arr_loc.push(data[0]);
-        for i in 1..data.len() - 1 {
-            if data[i] > data[i - 1] && data[i] > data[i + 1] {
-                locminmax.ind_max.push(i);
-                locminmax.ind_loc.push(i);
-                locminmax.arr_loc.push(data[i]);
-            } else if data[i] < data[i - 1] && data[i] < data[i + 1] {
-                locminmax.ind_min.push(i);
-                locminmax.ind_loc.push(i);
-                locminmax.arr_loc.push(data[i]);
-            }
-        }
-        locminmax.arr_loc.push(*data.last().unwrap());
-        for i in 1..locminmax.arr_loc.len() {
-            locminmax.diff_loc.push((locminmax.arr_loc[i] - locminmax.arr_loc[i - 1]).abs());
-        }
-        locminmax
-    }
-}
+// impl LocMinMax {
+//     pub fn new(data: &Vec<f32>) -> LocMinMax {
+//         let mut locminmax = LocMinMax {
+//             ind_max: vec![],
+//             ind_min: vec![],
+//             ind_loc: vec![],
+//             arr_loc: vec![],
+//             diff_loc: vec![],
+//         };
+//         locminmax.arr_loc.push(data[0]);
+//         for i in 1..data.len() - 1 {
+//             if data[i] > data[i - 1] && data[i] > data[i + 1] {
+//                 locminmax.ind_max.push(i);
+//                 locminmax.ind_loc.push(i);
+//                 locminmax.arr_loc.push(data[i]);
+//             } else if data[i] < data[i - 1] && data[i] < data[i + 1] {
+//                 locminmax.ind_min.push(i);
+//                 locminmax.ind_loc.push(i);
+//                 locminmax.arr_loc.push(data[i]);
+//             }
+//         }
+//         locminmax.arr_loc.push(*data.last().unwrap());
+//         for i in 1..locminmax.arr_loc.len() {
+//             locminmax.diff_loc.push((locminmax.arr_loc[i] - locminmax.arr_loc[i - 1]).abs());
+//         }
+//         locminmax
+//     }
+// }
 /*
 // pub fn find_loc_min_max(data: &Vec<f32>) {
 //     let mut ind_max: Vec<usize> = vec![];
@@ -229,41 +248,38 @@ pub fn find_max(ind_max: &Vec<usize>, vec_max: &Vec<f32>) -> (f32, usize) {
     (max, ind_max[ind])
 }
 
-pub fn find_min(data: &Vec<f32>) -> f32 {
-    /* Находит минимальное значение фрагмента */
-    let mut min: f32 = 10.0;
-    // let mut indmin: usize = 0;
-    for (i,item) in data.iter().enumerate() {
-        if *item < min {
-            min = *item;
-            // indmin = i;
-        }
-    }
-    // (min, indmin)
-    min
-}
+// pub fn find_min(data: &Vec<f32>) -> f32 {
+//     /* Находит минимальное значение фрагмента */
+//     let mut min: f32 = 10.0;
+//     // let mut indmin: usize = 0;
+//     for (i,item) in data.iter().enumerate() {
+//         if *item < min {
+//             min = *item;
+//             // indmin = i;
+//         }
+//     }
+//     // (min, indmin)
+//     min
+// }
 
-pub fn get_max(data: &Vec<f32>) -> f32 {
-    let mut max: f32 = 0.0;
-    for (i,item) in data.iter().enumerate() {
-        if *item > max {
-            max = *item;
-        }
-    }
-    max
-}
+// pub fn get_max(data: &Vec<f32>) -> f32 {
+//     let mut max: f32 = 0.0;
+//     for (i,item) in data.iter().enumerate() {
+//         if *item > max {
+//             max = *item;
+//         }
+//     }
+//     max
+// }
 
 pub fn get_coef_p(time_param: &TimeParam) -> Vec<f32> {
-    let mut zub_p1 = Zubp::new();
-    let mut zub_p2 = Zubp::new();
-    let mut zub_p3 = Zubp::new();
+    let r_pos_len = &time_param.r_pos.len();
+    let mut zub_p1 = Zubp::new(&r_pos_len);
+    let mut zub_p2 = Zubp::new(&r_pos_len);
+    let mut zub_p3 = Zubp::new(&r_pos_len);
     zub_p1.get_mean_amp_pos(1, time_param);
     zub_p2.get_mean_amp_pos(2, time_param);
     zub_p3.get_mean_amp_pos(3, time_param);
-    let mut pr = (zub_p1.mean_pr + zub_p2.mean_pr + zub_p3.mean_pr) / 3.0;
-    zub_p1.mean_pr = pr;
-    zub_p2.mean_pr = pr;
-    zub_p3.mean_pr = pr;
 
     let p1 = zub_p1.get_p_in_lead(1, time_param);
     let p2 = zub_p2.get_p_in_lead(2, time_param);
@@ -312,8 +328,8 @@ pub fn get_coef_p(time_param: &TimeParam) -> Vec<f32> {
     out[1] = out[2];
     out[out_len-2] = out[out_len-3];
     out[out_len-1] = out[out_len-3];
-    out = truncate_win2(&out, 0.85, 160);
-    out = truncate_win2(&out, 0.75, 80);
+    // out = truncate_win2(&out, 0.85, 160);
+    // out = truncate_win2(&out, 0.75, 80);
     // out = truncate_win2(&out, 0.6, 80);
     // out = truncate_win2(&out, 0.6, 80);
     out = step_moving_average(&out, 20);
@@ -350,9 +366,29 @@ pub fn median(vec: &mut Vec<f32>) -> f32 {
     }
 }
 
-pub fn cut_neg(vec: &mut Vec<f32>) {
-    let len_vec = vec.len();
-    for i in 0..len_vec {
-        if vec[i] < 0.0 {vec[i] = 0.0};
+pub fn median_filter(input: &Vec<f32>, window_size: usize) -> Vec<f32> {
+    let mut output = vec![0.0; input.len()]; // Инициализируем выходной вектор нулями
+    let half_window = window_size / 2;
+
+    for i in half_window..input.len() - half_window {
+        let start = i - half_window;
+        let end = i + half_window + 1 ;
+
+        let mut window: Vec<f32> = input[start..end].to_vec();
+        output[i] = median(&mut window);
     }
+    for i in 0..half_window {
+        output[i] = output[half_window];
+    }
+    for i in output.len() - half_window..output.len() {
+        output[i] = output[i - half_window];
+    }
+    output
 }
+
+// pub fn cut_neg(vec: &mut Vec<f32>) {
+//     let len_vec = vec.len();
+//     for i in 0..len_vec {
+//         if vec[i] < 0.0 {vec[i] = 0.0};
+//     }
+// }

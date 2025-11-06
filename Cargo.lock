@@ -306,15 +306,6 @@ dependencies = [
 
 [[package]]
 name = "memchr"
-version = "1.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "148fab2e51b4f1cfc66da2a7c32981d1d3c083a803978268bb11fe4b86925e7a"
-dependencies = [
- "libc",
-]
-
-[[package]]
-name = "memchr"
 version = "2.7.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "32a282da65faaf38286cf3be983213fcf1d2e2a58700e808f83f4ea9a4804bc0"
@@ -383,30 +374,11 @@ dependencies = [
 
 [[package]]
 name = "nom"
-version = "3.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "05aec50c70fd288702bcd93284a8444607f3292dbdf2a30de5ea5dcdbe72287b"
-dependencies = [
- "memchr 1.0.2",
-]
-
-[[package]]
-name = "nom"
 version = "8.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "df9761775871bdef83bee530e60050f7e54b1105350d6884eb0fb4f46c2f9405"
 dependencies = [
- "memchr 2.7.5",
-]
-
-[[package]]
-name = "npy"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "428bbb4dd63ca4318d430b61e64e9ba7809d11525605905eaa88c73b01d91ed4"
-dependencies = [
- "byteorder",
- "nom 3.2.1",
+ "memchr",
 ]
 
 [[package]]
@@ -599,7 +571,7 @@ version = "2.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1db05f56d34358a8b1066f67cbb203ee3e7ed2ba674a6263a1d5ec6db2204323"
 dependencies = [
- "memchr 2.7.5",
+ "memchr",
  "thiserror",
  "ucd-trie",
 ]
@@ -727,7 +699,6 @@ dependencies = [
  "native-dialog",
  "ndarray",
  "ndarray-npy",
- "npy",
 ]
 
 [[package]]
@@ -809,7 +780,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "80a7e511ce1795821207a837b7b1c8d8aca0c648810966ad200446ae58f6667f"
 dependencies = [
  "itertools",
- "nom 8.0.0",
+ "nom",
 ]
 
 [[package]]
@@ -895,7 +866,7 @@ dependencies = [
  "displaydoc",
  "flate2",
  "indexmap",
- "memchr 2.7.5",
+ "memchr",
  "thiserror",
  "zopfli",
 ]

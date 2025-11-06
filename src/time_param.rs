@@ -11,6 +11,7 @@ pub struct TimeParam {
     pub clear_intervals: Vec<f32>,
     pub threshold: Vec<f32>,
     pub chars: Vec<char>,
+    pub forms: Vec<usize>
 }
 
 impl TimeParam {
@@ -22,6 +23,7 @@ impl TimeParam {
             clear_intervals: vec![],
             threshold: vec![],
             chars: vec![],
+            forms: vec![],
         };
         time_param.parse_b_txt();
         time_param.get_inds_min_diff();
@@ -64,6 +66,7 @@ impl TimeParam {
                     if end_line.len() == 2 {
                         self.r_pos.push(split_line[0].parse::<f32>().unwrap());
                         self.intervals.push(split_line[1].parse::<f32>().unwrap());
+                        self.forms.push(end_line[1].parse::<usize>().unwrap());
                         let char_in_line = end_line[0].chars().nth(0);
                         let char_end = char_in_line.unwrap_or_else(|| "A".chars().next().unwrap());
                         self.chars.push(char_end);
@@ -158,8 +161,6 @@ impl TimeParam {
 
     fn get_inds_min_diff(&mut self) {
         /*
-        Возвращает индексы интервалов, где абсолютная разница между
-        последовательными интервалами меньше или равна 3.
         Параметры:
         intervals: Vec<f32>.
         Возвращает:
@@ -167,9 +168,10 @@ impl TimeParam {
         между последовательными интервалами меньше или равна 3.
         */
         for i in 1..self.intervals.len() - 1 {
-            if (self.chars[i] == 'N') && (self.chars[i - 1] == 'N') && (self.chars[i + 1] == 'N') {
+            let min_diff = &self.intervals[i] * 0.02;
+            if (self.chars[i] == 'N') && (self.chars[i - 1] == 'N')  && (self.forms[i] != 0) && (self.forms[i] == self.forms[i - 1]) {
                 let diff = (self.intervals[i] - self.intervals[i + 1]).abs();
-                if diff <= 3.0 {
+                if diff <= min_diff {
                     self.inds_min_diff.push(i);
                 }
             }

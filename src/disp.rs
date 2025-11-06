@@ -1,4 +1,4 @@
-use crate::my_lib::{moving_average, step_moving_average, truncate_win2};
+
 use crate::time_param::TimeParam;
 
 fn get_diff_intervals(intervals: &Vec<f32>, step: usize) -> Vec<f32> {

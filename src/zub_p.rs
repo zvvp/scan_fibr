@@ -1,47 +1,51 @@
-use crate::my_lib::{find_local_max, find_min, my_filtfilt, Lead, LocMinMax, median, find_max, cut_neg};
+use crate::my_lib::{find_local_max, find_local_min, my_filtfilt, Lead
+                    , median_filter, find_max};
 use crate::time_param::TimeParam;
 
 pub struct Zubp {
     pub mean_amp_p: f32,
-    pub mean_pr: f32,
+    pub presence_pr: Vec<f32>,
+    pub intervals_pr: Vec<f32>,
+    pub inds_pr: Vec<f32>,
 }
 
 impl Zubp {
-    pub fn new() -> Zubp {
+    pub fn new(r_pos_len: &usize) -> Zubp {
         Zubp {
             mean_amp_p: 0.0,
-            mean_pr: 0.0,
+            presence_pr: vec![0.0; *r_pos_len],
+            intervals_pr: vec![],
+            inds_pr: vec![],
         }
     }
     pub fn get_mean_amp_pos(&mut self, num: u8, time_param: &TimeParam) {
         /*
-            Вычисляет ср. амп. P зубца и ср. расстояние PR для отведения lead
+            Заполняет структуру Zubp
          */
-        // bl, al = butter(3, 12.0, 'lp', fs=250)
-        let bl: Vec<f32> = vec![0.00259189, 0.00777566, 0.00777566, 0.00259189];
-        let al: Vec<f32> = vec![1.0, -2.3989593, 1.96548122, -0.54578683];
         let lead = Lead::new(num);
         let mut vec_amp_p: Vec<f32> = vec![];
-        let mut vec_pr: Vec<f32> = vec![];
         for ind in &time_param.inds_min_diff {
-            if time_param.chars[*ind] == 'N' {
-                let len_pr = time_param.intervals[*ind] * 0.36 + 5.0;
-                let start = (time_param.r_pos[*ind] - len_pr) as usize;
-                let stop = (time_param.r_pos[*ind] - 7.0) as usize;
-                let mut fragment = lead.lead[start..stop].to_vec();
-                cut_neg(&mut fragment);
-                let fragment = my_filtfilt(&bl, &al, &fragment);
-
-                let (amp_p, ind_p) = self.get_amp_ind_p(&fragment);
-                if (amp_p < 1.0) && (amp_p > 0.01) {
-                    let pr = len_pr - ind_p as f32;
-                    vec_amp_p.push(amp_p);
-                    vec_pr.push(pr);
-                }
+            let len_pr = time_param.intervals[*ind] * 0.45;
+            let start = (time_param.r_pos[*ind] - len_pr) as usize;
+            let stop = (time_param.r_pos[*ind] - 10.0) as usize;
+            let fragment = lead.lead[start..stop].to_vec();
+            let (amp_p, ind_p) = self.get_amp_ind_p(&fragment);
+            if (amp_p < 1.0) && (amp_p > 0.001) {
+                let pr = len_pr - ind_p as f32;
+                vec_amp_p.push(amp_p);
+                self.intervals_pr.push(pr);
+                self.inds_pr.push(ind_p as f32);
             }
         }
-        self.mean_pr = median(&mut vec_pr);
-        self.mean_amp_p = median(&mut vec_amp_p);
+        if vec_amp_p.is_empty() {
+            self.mean_amp_p = 0.0;
+        } else {
+            let sum: f32 = vec_amp_p.iter().sum();
+            let count = vec_amp_p.len() as f32;
+            self.mean_amp_p = sum / count;
+        }
+        self.intervals_pr = median_filter(&self.intervals_pr, 19);
+        self.interp_pr();
     }
 
     fn get_amp_ind_p(&mut self, fragment: &Vec<f32>) -> (f32, usize) {
@@ -49,167 +53,165 @@ impl Zubp {
             Возвращает амп. P и его индекс в фрагменте(PR)
             для вычисления mean_amp_p и mean_PR
          */
+        let b: Vec<f32> = vec![0.02785977, 0.05571953, 0.02785977];
+        let a: Vec<f32> = vec![1.0, -1.47548044, 0.58691951];
+        let bi: Vec<f32> = vec![0.03634612, 0.03634612];
+        let ai: Vec<f32> = vec![1.0, -0.92730777];
         let mut amp_p: f32 = 0.0;
         let mut ind_p: usize = 0;
-        let (ind_max, vec_max) = find_local_max(fragment);
+        let mut fragment = my_filtfilt(&b, &a, &fragment);
+        let isoline = my_filtfilt(&bi, &ai, &fragment);
+        for i in 0..fragment.len() {
+            fragment[i] = fragment[i] - isoline[i];
+        }
+        let mut over_fragment: Vec<f32> = vec![0.0; fragment.len()];
+        for i in 0..fragment.len() {
+            if fragment[i] > 0.0 {
+                over_fragment[i] = fragment[i];
+            }
+        }
+        let mut under_fragment: Vec<f32> = vec![0.0; fragment.len()];
+        for i in 0..fragment.len() {
+            if fragment[i] < 0.0 {
+                under_fragment[i] = fragment[i];
+            }
+        }
+        // ind_max - массив индексов лок максимумов больше 0
+        // vec_max - массив значений лок максимумов больше 0
+        let (ind_max, vec_max) = find_local_max(&over_fragment);
+        // ind_min - массив индексов лок минимумов меньше 0
+        // vec_min - массив значений лок минимумов меньше 0
+        let (ind_min, _vec_min) = find_local_min(&under_fragment);
+        let len_ind_min = ind_min.len();
+        let mut ind_loc_extrem = ind_min;
         if ind_max.len() >= 1 {
             let max_ind_p = find_max(&ind_max, &vec_max);
-            let max = max_ind_p.0;
             ind_p = max_ind_p.1;
-            let frag_l = fragment[..ind_p].to_vec();
-            let frag_r = fragment[ind_p..].to_vec();
-            let min_l = find_min(&frag_l);
-            let min_r = find_min(&frag_r);
-            let mut isoline = 0.0;
-            if min_l < min_r {
-                isoline = min_l;
+            if len_ind_min > 0 {
+                ind_loc_extrem.push(ind_p); // массив индексов лок минимумов и ind_p
+                //Сортируем массив индексов
+                ind_loc_extrem.sort_by(|a, b| a.partial_cmp(b).unwrap());
+                // Массив значений лок максимумов и лок минимумов
+                let loc_extrem: Vec<f32> = ind_loc_extrem.iter()
+                    .filter_map(|&index| fragment.get(index))
+                    .cloned().collect();
+                let (_max_val, max_index) = find_max(&ind_loc_extrem, &loc_extrem);
+                if max_index == 0 {
+                    amp_p = loc_extrem[0];
+                } else if max_index == loc_extrem.len() - 1 {
+                    amp_p = loc_extrem[loc_extrem.len() - 1];
+                } else {
+                    let side1 = loc_extrem[max_index] - loc_extrem[max_index - 1];
+                    let side2 = loc_extrem[max_index] - loc_extrem[max_index + 1];
+                    if side1 < side2 {
+                        amp_p = side1;
+                    } else {
+                        amp_p = side2;
+                    }
+                }
             } else {
-                isoline = min_r;
+                amp_p = fragment[ind_p];
             }
-            amp_p = max - isoline;
         }
         (amp_p, ind_p)
     }
 
-    fn find_p(&self, fragment: &Vec<f32>) -> f32 {
-        let mut pzub: f32 = 0.0;
-        let mut amp_pzub: f32 = 0.0;
-        let mut amp_pzub1: f32 = 0.0;
-        let mut amp_pzub2: f32 = 0.0;
-        let mut amp_pzub3: f32 = 0.0;
-        let (ind_max, vec_max) = find_local_max(fragment);
-        let num_of_max = ind_max.len();
-        if num_of_max == 1 {
-            let min_left = find_min(&fragment[..ind_max[0]].to_vec());
-            let min_right = find_min(&fragment[ind_max[0]..].to_vec());
-            let isoline = if min_left < min_right {
-                min_left
-            } else { min_right };
-            // let isoline = (min_left + min_right) / 2.0;
-            amp_pzub = vec_max[0] - isoline;
-        } else if num_of_max == 2 {
-            let min_left = find_min(&fragment[..ind_max[0]].to_vec());
-            let min_med = find_min(&fragment[ind_max[0]..ind_max[1] + 1].to_vec());
-            let min_right = find_min(&fragment[ind_max[0]..].to_vec());
-            let isoline1 = (min_left + min_med) / 2.0;
-            // let isoline1 = if min_left < min_right {min_left} else {min_right};
-            let isoline2 = (min_med + min_right) / 2.0;
-            // let isoline2 = if min_med < min_right {min_med} else {min_right};
-            amp_pzub1 = vec_max[0] - isoline1;
-            amp_pzub2 = vec_max[1] - isoline2;
-            amp_pzub = if amp_pzub1 > amp_pzub2 {
-                amp_pzub1
-            } else { amp_pzub2 };
-        } else if num_of_max == 3 {
-            let min_left = find_min(&fragment[..ind_max[0]].to_vec());
-            let min_med1 = find_min(&fragment[ind_max[0]..ind_max[1] + 1].to_vec());
-            let min_med2 = find_min(&fragment[ind_max[1]..ind_max[2] + 1].to_vec());
-            let min_right = find_min(&fragment[ind_max[2]..].to_vec());
-            let isoline1 = (min_left + min_med1) / 2.0;
-            let isoline2 = (min_med1 + min_med2) / 2.0;
-            let isoline3 = (min_med2 + min_right) / 2.0;
-            amp_pzub1 = vec_max[0] - isoline1;
-            amp_pzub2 = vec_max[1] - isoline2;
-            amp_pzub3 = vec_max[2] - isoline3;
-            amp_pzub = if amp_pzub1 > (amp_pzub2 + amp_pzub3) * 0.7 {
-                amp_pzub1
-            } else if amp_pzub2 > (amp_pzub1 + amp_pzub3) * 0.7 {
-                amp_pzub2
-            } else if amp_pzub3 > (amp_pzub1 + amp_pzub2) * 0.7 {
-                amp_pzub3
-            } else {0.0};
-        }
-        if (amp_pzub > self.mean_amp_p * 0.07) {//&& (amp_pzub > 0.002) {
-            pzub = 1.0;
-        }
-        pzub
-    }
-
-    fn find_p1(&self, fragment: &Vec<f32>) -> f32 {
-        /*
-            Возвращает 1.0, если P зубец найден 0.0, если нет
-         */
-        let mut pzub: f32 = 0.0;
-        let mut amp_pzub: f32 = 0.0;
-        let mut amp_pzub1: f32 = 0.0;
-        let mut amp_pzub2: f32 = 0.0;
-        let locminmax = LocMinMax::new(fragment);
-        /*println!("arr_loc {:?}", &locminmax.arr_loc);
-        println!("diff_loc {:?}", &locminmax.diff_loc);
-        println!("ind_max {:?}", &locminmax.ind_max);
-        println!("ind_min {:?}", &locminmax.ind_min);*/
-        if locminmax.ind_max.len() == 1 {
-            if locminmax.ind_min.len() == 0 {
-                amp_pzub = find_min(&locminmax.diff_loc);
-            } else if locminmax.ind_min.len() == 1 {
-                if locminmax.ind_max[0] < locminmax.ind_min[0] {
-                    amp_pzub = find_min(&locminmax.diff_loc[..2].to_vec());
-                } else if locminmax.ind_max[0] > locminmax.ind_min[0] {
-                    amp_pzub = find_min(&locminmax.diff_loc[1..3].to_vec());
-                }
-            } else if locminmax.ind_min.len() == 2 {
-                amp_pzub = find_min(&locminmax.diff_loc[1..3].to_vec());
-            }
-        } else if locminmax.ind_max.len() == 2 {
-            if locminmax.ind_min.len() == 1 {
-                amp_pzub1 = find_min(&locminmax.diff_loc[..2].to_vec());
-                amp_pzub2 = find_min(&locminmax.diff_loc[2..].to_vec());
-            } else if locminmax.ind_min.len() == 2 {
-                if locminmax.ind_max[0] < locminmax.ind_min[0] {
-                    amp_pzub1 = find_min(&locminmax.diff_loc[..2].to_vec());
-                    amp_pzub2 = find_min(&locminmax.diff_loc[2..4].to_vec());
-                } else if locminmax.ind_max[0] > locminmax.ind_min[0] {
-                    amp_pzub1 = find_min(&locminmax.diff_loc[1..3].to_vec());
-                    amp_pzub2 = find_min(&locminmax.diff_loc[3..].to_vec());
-                }
-            } else if locminmax.ind_min.len() == 3 {
-                amp_pzub1 = find_min(&locminmax.diff_loc[1..3].to_vec());
-                amp_pzub2 = find_min(&locminmax.diff_loc[3..5].to_vec());
-            }
-            if (amp_pzub1 > amp_pzub2) && (amp_pzub1 / amp_pzub2 > 1.1) {   // > 10.0
-                amp_pzub = amp_pzub1;
-            } else if (amp_pzub2 > amp_pzub1) && (amp_pzub2 / amp_pzub1 > 1.1) {   // > 10.0
-                amp_pzub = amp_pzub2;
-            }
-        }
-        if (amp_pzub > self.mean_amp_p * 0.005) && (amp_pzub > 0.0005) {
-        // if (amp_pzub > self.mean_amp_p * 0.05) && (amp_pzub > 0.0035) {
-            pzub = 1.0;
-        }
-        pzub
-    }
+    // fn find_p1(&self, fragment: &Vec<f32>) -> f32 {
+    //     /*
+    //         Возвращает 1.0, если P зубец найден 0.0, если нет
+    //      */
+    //     let mut pzub: f32 = 0.0;
+    //     let mut amp_pzub: f32 = 0.0;
+    //     let mut amp_pzub1: f32 = 0.0;
+    //     let mut amp_pzub2: f32 = 0.0;
+    //     let locminmax = LocMinMax::new(fragment);
+    //     /*println!("arr_loc {:?}", &locminmax.arr_loc);
+    //     println!("diff_loc {:?}", &locminmax.diff_loc);
+    //     println!("ind_max {:?}", &locminmax.ind_max);
+    //     println!("ind_min {:?}", &locminmax.ind_min);*/
+    //     if locminmax.ind_max.len() == 1 {
+    //         if locminmax.ind_min.len() == 0 {
+    //             amp_pzub = find_min(&locminmax.diff_loc);
+    //         } else if locminmax.ind_min.len() == 1 {
+    //             if locminmax.ind_max[0] < locminmax.ind_min[0] {
+    //                 amp_pzub = find_min(&locminmax.diff_loc[..2].to_vec());
+    //             } else if locminmax.ind_max[0] > locminmax.ind_min[0] {
+    //                 amp_pzub = find_min(&locminmax.diff_loc[1..3].to_vec());
+    //             }
+    //         } else if locminmax.ind_min.len() == 2 {
+    //             amp_pzub = find_min(&locminmax.diff_loc[1..3].to_vec());
+    //         }
+    //     } else if locminmax.ind_max.len() == 2 {
+    //         if locminmax.ind_min.len() == 1 {
+    //             amp_pzub1 = find_min(&locminmax.diff_loc[..2].to_vec());
+    //             amp_pzub2 = find_min(&locminmax.diff_loc[2..].to_vec());
+    //         } else if locminmax.ind_min.len() == 2 {
+    //             if locminmax.ind_max[0] < locminmax.ind_min[0] {
+    //                 amp_pzub1 = find_min(&locminmax.diff_loc[..2].to_vec());
+    //                 amp_pzub2 = find_min(&locminmax.diff_loc[2..4].to_vec());
+    //             } else if locminmax.ind_max[0] > locminmax.ind_min[0] {
+    //                 amp_pzub1 = find_min(&locminmax.diff_loc[1..3].to_vec());
+    //                 amp_pzub2 = find_min(&locminmax.diff_loc[3..].to_vec());
+    //             }
+    //         } else if locminmax.ind_min.len() == 3 {
+    //             amp_pzub1 = find_min(&locminmax.diff_loc[1..3].to_vec());
+    //             amp_pzub2 = find_min(&locminmax.diff_loc[3..5].to_vec());
+    //         }
+    //         if (amp_pzub1 > amp_pzub2) && (amp_pzub1 / amp_pzub2 > 1.1) {   // > 10.0
+    //             amp_pzub = amp_pzub1;
+    //         } else if (amp_pzub2 > amp_pzub1) && (amp_pzub2 / amp_pzub1 > 1.1) {   // > 10.0
+    //             amp_pzub = amp_pzub2;
+    //         }
+    //     }
+    //     if (amp_pzub > self.mean_amp_p * 0.005) && (amp_pzub > 0.0005) {
+    //     // if (amp_pzub > self.mean_amp_p * 0.05) && (amp_pzub > 0.0035) {
+    //         pzub = 1.0;
+    //     }
+    //     pzub
+    // }
 
     pub fn get_p_in_lead(&mut self, num: u8, time_param: &TimeParam) -> Vec<f32> {
         let lead = Lead::new(num);
-        let b: Vec<f32> = vec![0.02155836, 0.04311672, 0.02155836];
-        let a: Vec<f32> = vec![1.0, -1.54383625, 0.6300697];
-        let bh: Vec<f32> = vec![0.99749302, -0.99749302];
-        let ah: Vec<f32> = vec![1.0, -0.99498604];
         let mut p: Vec<f32> = vec![0.0; time_param.r_pos.len()];
-        let mut out: Vec<f32> = vec![0.0; time_param.r_pos.len()];
-        // self.get_mean_amp_pos(&lead, time_param);
         for i in 4..time_param.r_pos.len() {
-            let len_pr = time_param.intervals[i].sqrt() * 3.7;
-            let end_pr = time_param.intervals[i].sqrt() * 0.66 + 2.0;
-            let start = (time_param.r_pos[i] - len_pr) as usize;
-            let stop = (time_param.r_pos[i] - end_pr) as usize;
-            let start1 = (time_param.r_pos[i] - self.mean_pr - 15.0) as usize;
-            let stop1 = (time_param.r_pos[i] - self.mean_pr + self.mean_pr.sqrt() * 3.0) as usize;
-            let mut fragment: Vec<f32> = if self.mean_pr > time_param.intervals[i] * 0.36 {
-                lead.lead[start..stop].to_vec()
+            let start = (time_param.r_pos[i] - self.presence_pr[i] - 15.0) as usize;
+            let stop = if (self.presence_pr[i] - 15.0) > 10.0 {
+                (time_param.r_pos[i] - self.presence_pr[i] + 15.0) as usize
             } else {
-                lead.lead[start1..stop1].to_vec()
+                (time_param.r_pos[i] - 10.0) as usize
             };
-            cut_neg(&mut fragment);
-            if time_param.chars[i] == 'N' {
-                let fragment = my_filtfilt(&b, &a, &fragment);
-                // let fragment = my_filtfilt(&bh, &ah, &fragment);
-                let pzub = self.find_p(&fragment);
-                p[i] = pzub;
-            } else {
+            let fragment = lead.lead[start..stop].to_vec();
+            if time_param.chars[i] != 'N' {
                 p[i] = 1.0;
+            } else {
+                let (amp_p, _ind_p) = self.get_amp_ind_p(&fragment);
+                if amp_p > self.mean_amp_p * 0.12 {
+                    p[i] = 1.0;
+                }
             }
         }
         p
+    }
+
+    fn interp_line(&mut self, ind_start: usize, ind_stop: usize, val_start: f32, val_stop: f32) {
+        let diff_val = val_stop - val_start;
+        let count_step = ind_stop - ind_start;
+        if count_step > 0 {
+            let step_val = diff_val / count_step as f32;
+            for i in ind_start..ind_stop {
+                self.presence_pr[i] = val_start + step_val * (i as f32);
+            }
+        }
+    }
+    fn interp_pr(&mut self) {
+        for i in 1..self.inds_pr.len() {
+            let ind_start = self.inds_pr[i - 1] as usize;
+            let ind_stop = self.inds_pr[i] as usize;
+            let val_start = self.intervals_pr[i - 1];
+            let val_stop = self.intervals_pr[i];
+            self.interp_line(ind_start, ind_stop, val_start, val_stop);
+        }
+        self.interp_line(0, self.inds_pr[0] as usize, self.intervals_pr[0], self.intervals_pr[0] );
+        self.interp_line(self.inds_pr.len(), self.presence_pr.len(), self.intervals_pr[self.inds_pr.len() - 1], self.intervals_pr[self.inds_pr.len() - 1]);
     }
 }
