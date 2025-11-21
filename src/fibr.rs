@@ -5,7 +5,7 @@ pub struct Fibr {
     pub diff_stop_start: Vec<usize>,
 }
 impl Fibr {
-    pub fn new(coef_fibr: &Vec<f32>, trs: &Vec<f32>, r_pos: &Vec<f32>, start_time_in_samples: usize, mask: &Vec<usize>) -> Fibr {
+    pub fn new(coef_fibr: &Vec<f32>, trs: &Vec<f32>, r_pos: &Vec<i32>, start_time_in_samples: usize, mask: &Vec<usize>) -> Fibr {
         let mut fibr = Fibr {
             start_ind_arr: vec![],
             stop_ind_arr: vec![],
@@ -15,10 +15,10 @@ impl Fibr {
         fibr
     }
 
-    fn get_start_stop(&mut self, coef_fibr: &Vec<f32>, trs: &Vec<f32>, r_pos: &Vec<f32>, start_time_in_samples: usize, mask: &Vec<usize>) {
+    fn get_start_stop(&mut self, coef_fibr: &Vec<f32>, trs: &Vec<f32>, r_pos: &Vec<i32>, start_time_in_samples: usize, mask: &Vec<usize>) {
         let mut start_ind: usize = 0;
         let mut stop_ind: usize = 0;
-        let min_size: usize = 22;
+        let min_size: usize = 20;
         let mut flag: bool = false;
         if coef_fibr[0] > trs[0] {
             self.start_ind_arr.push(r_pos[start_ind] as usize + start_time_in_samples);

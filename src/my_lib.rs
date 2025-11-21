@@ -1,11 +1,14 @@
 use native_dialog::{DialogBuilder, MessageLevel};
-use ndarray::Array1;
+// use ndarray::Array1;
 use ndarray_npy::read_npy;
 use crate::time_param::TimeParam;
 use crate::zub_p::Zubp;
+use ndarray_npy::write_npy;
+use ndarray::{Array, Array1};
 
 pub struct Lead {
     pub lead: Vec<f32>,
+    len_lead: usize,
 }
 impl Lead {
     pub fn new(num: u8) -> Lead {
@@ -31,9 +34,11 @@ impl Lead {
             let arr = Array1::from_vec(vec);
             arr
         };
-
+        let vec_lead = arr.to_vec();
+        let len = vec_lead.len();
         Lead {
-            lead: arr.to_vec()
+            lead: vec_lead,
+            len_lead: len,
         }
     }
 }
@@ -174,6 +179,22 @@ pub fn find_local_min(data: &Vec<f32>) -> (Vec<usize>, Vec<f32>) {
     (ind_min, vec_min)
 }
 
+pub fn find_local_extrema(data: &Vec<f32>) -> (Vec<usize>, Vec<f32>) {
+    let mut vec_ind_extrema: Vec<usize> = vec![];
+    let mut vec_val_extrema: Vec<f32> = vec![];
+    for i in 1..data.len() - 1 {
+        if (data[i] > data[i - 1] && data[i] > data[i + 1]) || (data[i] < data[i - 1] && data[i] < data[i + 1]) {
+            vec_ind_extrema.push(i);
+            vec_val_extrema.push(data[i]);
+        }
+    }
+    if vec_ind_extrema.len() == 0 {
+        vec_ind_extrema.push(0);
+        vec_val_extrema.push(0.0);
+    }
+    (vec_ind_extrema, vec_val_extrema)
+}
+
 pub fn find_local_max(data: &Vec<f32>) -> (Vec<usize>, Vec<f32>) {
     let mut ind_max: Vec<usize> = vec![];
     let mut vec_max: Vec<f32> = vec![];
@@ -234,7 +255,7 @@ pub fn find_local_max(data: &Vec<f32>) -> (Vec<usize>, Vec<f32>) {
 //     let mut vec_max: Vec<f32> = vec![];
 // }
 */
-pub fn find_max(ind_max: &Vec<usize>, vec_max: &Vec<f32>) -> (f32, usize) {
+pub fn find_max(vec_max: &Vec<f32>) -> (f32, usize) {
     /* Находит в фрагменте индекс максимального локального максимума
     и значение макс. лок. */
     let mut max: f32 = 0.0;
@@ -245,7 +266,8 @@ pub fn find_max(ind_max: &Vec<usize>, vec_max: &Vec<f32>) -> (f32, usize) {
             ind = i;
         }
     }
-    (max, ind_max[ind])
+    (max, ind)
+    // (max, ind_max[ind])
 }
 
 // pub fn find_min(data: &Vec<f32>) -> f32 {
@@ -273,21 +295,41 @@ pub fn find_max(ind_max: &Vec<usize>, vec_max: &Vec<f32>) -> (f32, usize) {
 // }
 
 pub fn get_coef_p(time_param: &TimeParam) -> Vec<f32> {
-    let r_pos_len = &time_param.r_pos.len();
-    let mut zub_p1 = Zubp::new(&r_pos_len);
-    let mut zub_p2 = Zubp::new(&r_pos_len);
-    let mut zub_p3 = Zubp::new(&r_pos_len);
+    let r_pos_len = time_param.r_pos.len();
+    let mut zub_p1 = Zubp::new(r_pos_len);
+    let mut zub_p2 = Zubp::new(r_pos_len);
+    let mut zub_p3 = Zubp::new(r_pos_len);
     zub_p1.get_mean_amp_pos(1, time_param);
     zub_p2.get_mean_amp_pos(2, time_param);
     zub_p3.get_mean_amp_pos(3, time_param);
+    let mut presence_pr: Vec<i32> = vec![];
+    for i in 0..zub_p1.presence_pr.len() {
+        let mut vec_pr = vec![zub_p1.presence_pr[i], zub_p2.presence_pr[i], zub_p3.presence_pr[i]];
+        let med_pr = median(&mut vec_pr);
+        presence_pr.push(med_pr);
+    }
+    presence_pr = median_filter(&presence_pr, 59); // 19
+    zub_p1.presence_pr = presence_pr.clone();
+    zub_p2.presence_pr = presence_pr.clone();
+    zub_p3.presence_pr = presence_pr.clone();
+    // println!("zub_p1.inds_pr.len {}", zub_p1.inds_pr[zub_p1.inds_pr.len() - 1]);
+    // println!("zub_p2.inds_pr.len {}", zub_p2.inds_pr.len());
+    // println!("zub_p3.inds_pr.len {}", zub_p3.inds_pr.len());
+    // println!("zub_p1.intervals_pr.len {}", zub_p1.intervals_pr.len());
+    // println!("zub_p2.intervals_pr.len {}", zub_p2.intervals_pr.len());
+    // println!("zub_p3.intervals_pr.len {}", zub_p3.intervals_pr.len());
+    let data_i64: Vec<i64> = presence_pr.iter().map(|&x| x as i64).collect();
+    let array: Array1<i64> = Array::from_vec(data_i64);
+    write_npy("presence_pr.npy", &array);
 
     let p1 = zub_p1.get_p_in_lead(1, time_param);
     let p2 = zub_p2.get_p_in_lead(2, time_param);
     let p3 = zub_p3.get_p_in_lead(3, time_param);
-    // println!("inds_min_diff.len(): {}", time_param.inds_min_diff.len());
-    // println!("mean_amp_p1: {}", zub_p1.mean_amp_p);
-    // println!("mean_amp_p2: {}", zub_p2.mean_amp_p);
-    // println!("mean_amp_p3: {}", zub_p3.mean_amp_p);
+    println!("inds_min_diff.len: {}", time_param.inds_min_diff.len());
+    println!("presence_pr.len: {}", presence_pr.len());
+    println!("mean_amp_p1: {}", zub_p1.mean_amp_p);
+    println!("mean_amp_p2: {}", zub_p2.mean_amp_p);
+    println!("mean_amp_p3: {}", zub_p3.mean_amp_p);
     // println!("mean_PR1: {}", zub_p1.mean_pr);
     // println!("mean_PR2: {}", zub_p2.mean_pr);
     // println!("mean_PR3: {}", zub_p3.mean_pr);
@@ -316,7 +358,7 @@ pub fn get_coef_p(time_param: &TimeParam) -> Vec<f32> {
                 sum_p3 = (sum_p1 + sum_p2) / 2.0;
             }
         }
-        let sum_buf = sum_p1 * sum_p2 * sum_p3 * 0.38;  // * 0.38;
+        let sum_buf = sum_p1 * sum_p2 * sum_p3 * 0.3;  // * 0.38;
         out[i - 2] = sum_buf;
     }
     let max_out: f32 = out.iter().fold(f32::MIN, |a, b| a.max(*b));
@@ -341,7 +383,9 @@ pub fn get_coef_p(time_param: &TimeParam) -> Vec<f32> {
 pub fn get_coef_fibr(coef_p: &Vec<f32>, coef_disp: &Vec<f32>, time_param: &TimeParam) -> Vec<f32> {
     let mut out: Vec<f32> = vec![0.0; coef_p.len()];
     for i in 0..coef_p.len() {
-        out[i] = coef_p[i] * coef_disp[i] * (0.5 + 100.0 / time_param.threshold[i]);
+        // out[i] = coef_p[i] * coef_disp[i] * (0.5 + 100.0 / time_param.threshold[i]);
+        let x = time_param.threshold[i];
+        out[i] = coef_p[i] * coef_disp[i] * ((-((x - 110.0) / 150.0).powi(2)).exp() * 0.8 + 0.65);
     }
     out = truncate_win2(&out, 0.85, 160);
     out = truncate_win2(&out, 0.75, 80);
@@ -350,7 +394,7 @@ pub fn get_coef_fibr(coef_p: &Vec<f32>, coef_disp: &Vec<f32>, time_param: &TimeP
     out
 }
 
-pub fn median(vec: &mut Vec<f32>) -> f32 {
+pub fn median(vec: &mut Vec<i32>) -> i32 {
     // Сортируем вектор
     vec.sort_by(|a, b| a.partial_cmp(b).unwrap());
 
@@ -359,22 +403,22 @@ pub fn median(vec: &mut Vec<f32>) -> f32 {
         // Если четное количество элементов
         let mid1 = vec[len / 2 - 1];
         let mid2 = vec[len / 2];
-        (mid1 + mid2) / 2.0
+        (mid1 + mid2) / 2
     } else {
         // Если нечетное количество элементов
         vec[len / 2]
     }
 }
 
-pub fn median_filter(input: &Vec<f32>, window_size: usize) -> Vec<f32> {
-    let mut output = vec![0.0; input.len()]; // Инициализируем выходной вектор нулями
+pub fn median_filter(input: &Vec<i32>, window_size: usize) -> Vec<i32> {
+    let mut output = vec![0; input.len()]; // Инициализируем выходной вектор нулями
     let half_window = window_size / 2;
 
     for i in half_window..input.len() - half_window {
         let start = i - half_window;
         let end = i + half_window + 1 ;
 
-        let mut window: Vec<f32> = input[start..end].to_vec();
+        let mut window: Vec<i32> = input[start..end].to_vec();
         output[i] = median(&mut window);
     }
     for i in 0..half_window {
@@ -386,9 +430,13 @@ pub fn median_filter(input: &Vec<f32>, window_size: usize) -> Vec<f32> {
     output
 }
 
-// pub fn cut_neg(vec: &mut Vec<f32>) {
-//     let len_vec = vec.len();
-//     for i in 0..len_vec {
-//         if vec[i] < 0.0 {vec[i] = 0.0};
-//     }
-// }
+pub fn count_forms(array: Vec<usize>) -> [usize; 11] {
+    let mut counts = [0; 11]; // Указываем размер массива по необходимости
+
+    for &value in &array {
+        if value < counts.len() {
+            counts[value] += 1;
+        }
+    }
+    counts
+}
