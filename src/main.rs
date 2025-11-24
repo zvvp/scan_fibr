@@ -1,4 +1,4 @@
-// #![windows_subsystem = "windows"]
+#![windows_subsystem = "windows"]
 use fibr_to_file::fibr_to_f_txt;
 
 mod my_lib;

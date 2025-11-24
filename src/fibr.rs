@@ -1,4 +1,4 @@
-#[derive(Debug)]
+// #[derive(Debug)]
 pub struct Fibr {
     pub start_ind_arr: Vec<usize>,
     pub stop_ind_arr: Vec<usize>,

@@ -1,5 +1,5 @@
 
-use crate::my_lib::{find_local_max, find_local_min, my_filtfilt, Lead, median_filter, find_max, find_local_extrema};
+use crate::my_lib::{my_filtfilt, Lead, median_filter, find_max, find_local_extrema};
 use crate::time_param::TimeParam;
 
 pub struct Zubp {
@@ -23,8 +23,6 @@ impl Zubp {
             Заполняет структуру Zubp
          */
         let lead = Lead::new(num);
-        // println!("lead{} {}", num, lead.lead.len());
-        // println!("inds_min_diff {}", time_param.inds_min_diff.len());
         let mut vec_amp_p: Vec<f32> = vec![];
         for ind in &time_param.inds_min_diff {
             let coef = 0.31 + time_param.intervals[*ind] / 2000.0;
@@ -71,29 +69,9 @@ impl Zubp {
             fragment[i] = fragment[i] - isoline[i];
         }
         let (vec_ind_extrema, vec_val_extrema) = find_local_extrema(&fragment);
-        // let mut over_fragment: Vec<f32> = vec![0.0; fragment.len()];
-        // for i in 0..fragment.len() {
-        //     if fragment[i] > 0.0 {
-        //         over_fragment[i] = fragment[i];
-        //     }
-        // }
-        // let mut under_fragment: Vec<f32> = vec![0.0; fragment.len()];
-        // for i in 0..fragment.len() {
-        //     if fragment[i] < 0.0 {
-        //         under_fragment[i] = fragment[i];
-        //     }
-        // }
-        // ind_max - массив индексов лок максимумов больше 0
-        // vec_max - массив значений лок максимумов больше 0
-        // let (ind_max, vec_max) = find_local_max(&over_fragment);
-        // ind_min - массив индексов лок минимумов меньше 0
-        // vec_min - массив значений лок минимумов меньше 0
-        // let (ind_min, _vec_min) = find_local_min(&under_fragment);
-        // let len_ind_min = ind_min.len();
-        // let mut ind_loc_extrem = ind_min;
         if vec_val_extrema.len() >= 1 {
             let (val_max_extrema, ind_max_extrema) = find_max(&vec_val_extrema);
-            ind_p = vec_ind_extrema[ind_max_extrema] as usize;
+            ind_p = vec_ind_extrema[ind_max_extrema];
             if ind_max_extrema == 0 {
                 amp_p = val_max_extrema;
             } else if ind_max_extrema == vec_ind_extrema.len() - 1 {
@@ -110,60 +88,6 @@ impl Zubp {
         }
         (amp_p, ind_p)
     }
-
-    // fn find_p1(&self, fragment: &Vec<f32>) -> f32 {
-    //     /*
-    //         Возвращает 1.0, если P зубец найден 0.0, если нет
-    //      */
-    //     let mut pzub: f32 = 0.0;
-    //     let mut amp_pzub: f32 = 0.0;
-    //     let mut amp_pzub1: f32 = 0.0;
-    //     let mut amp_pzub2: f32 = 0.0;
-    //     let locminmax = LocMinMax::new(fragment);
-    //     /*println!("arr_loc {:?}", &locminmax.arr_loc);
-    //     println!("diff_loc {:?}", &locminmax.diff_loc);
-    //     println!("ind_max {:?}", &locminmax.ind_max);
-    //     println!("ind_min {:?}", &locminmax.ind_min);*/
-    //     if locminmax.ind_max.len() == 1 {
-    //         if locminmax.ind_min.len() == 0 {
-    //             amp_pzub = find_min(&locminmax.diff_loc);
-    //         } else if locminmax.ind_min.len() == 1 {
-    //             if locminmax.ind_max[0] < locminmax.ind_min[0] {
-    //                 amp_pzub = find_min(&locminmax.diff_loc[..2].to_vec());
-    //             } else if locminmax.ind_max[0] > locminmax.ind_min[0] {
-    //                 amp_pzub = find_min(&locminmax.diff_loc[1..3].to_vec());
-    //             }
-    //         } else if locminmax.ind_min.len() == 2 {
-    //             amp_pzub = find_min(&locminmax.diff_loc[1..3].to_vec());
-    //         }
-    //     } else if locminmax.ind_max.len() == 2 {
-    //         if locminmax.ind_min.len() == 1 {
-    //             amp_pzub1 = find_min(&locminmax.diff_loc[..2].to_vec());
-    //             amp_pzub2 = find_min(&locminmax.diff_loc[2..].to_vec());
-    //         } else if locminmax.ind_min.len() == 2 {
-    //             if locminmax.ind_max[0] < locminmax.ind_min[0] {
-    //                 amp_pzub1 = find_min(&locminmax.diff_loc[..2].to_vec());
-    //                 amp_pzub2 = find_min(&locminmax.diff_loc[2..4].to_vec());
-    //             } else if locminmax.ind_max[0] > locminmax.ind_min[0] {
-    //                 amp_pzub1 = find_min(&locminmax.diff_loc[1..3].to_vec());
-    //                 amp_pzub2 = find_min(&locminmax.diff_loc[3..].to_vec());
-    //             }
-    //         } else if locminmax.ind_min.len() == 3 {
-    //             amp_pzub1 = find_min(&locminmax.diff_loc[1..3].to_vec());
-    //             amp_pzub2 = find_min(&locminmax.diff_loc[3..5].to_vec());
-    //         }
-    //         if (amp_pzub1 > amp_pzub2) && (amp_pzub1 / amp_pzub2 > 1.1) {   // > 10.0
-    //             amp_pzub = amp_pzub1;
-    //         } else if (amp_pzub2 > amp_pzub1) && (amp_pzub2 / amp_pzub1 > 1.1) {   // > 10.0
-    //             amp_pzub = amp_pzub2;
-    //         }
-    //     }
-    //     if (amp_pzub > self.mean_amp_p * 0.005) && (amp_pzub > 0.0005) {
-    //     // if (amp_pzub > self.mean_amp_p * 0.05) && (amp_pzub > 0.0035) {
-    //         pzub = 1.0;
-    //     }
-    //     pzub
-    // }
 
     pub fn get_p_in_lead(&mut self, num: u8, time_param: &TimeParam) -> Vec<f32> {
         let lead = Lead::new(num);
@@ -206,13 +130,13 @@ impl Zubp {
     }
     fn interp_pr(&mut self, time_param: &TimeParam)  {
         for i in 1..self.inds_pr.len() - 1 {
-            let ind_start = self.inds_pr[i] as usize;
-            let ind_stop = self.inds_pr[i + 1] as usize;
-            let mut val_start = self.intervals_pr[i];
-            let mut val_stop = self.intervals_pr[i + 1];
+            let ind_start = self.inds_pr[i];
+            let ind_stop = self.inds_pr[i + 1];
+            let val_start = self.intervals_pr[i];
+            let val_stop = self.intervals_pr[i + 1];
             self.interp_line(ind_start, ind_stop, val_start, val_stop);
         }
-        self.interp_line(0, self.inds_pr[0] as usize,
+        self.interp_line(0, self.inds_pr[0],
                          self.intervals_pr[0], self.intervals_pr[0]);
         self.interp_line(self.inds_pr[self.inds_pr.len() - 1],
                          time_param.r_pos.len(),
